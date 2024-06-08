@@ -4,11 +4,60 @@ using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
 using System.Threading;
 using Windows.Storage.Streams;
+using System.Collections.Generic;
+
+public class Variables
+{
+    static int balls = 0;
+}
 
 class Program
 {
+
+    public static int balls = 0;
+    public static String[] macAddresses = { "", "" };
+
     static async Task Main(string[] args)
     {
+        
+        String usage = "Usage: xxxxxx yyyyyy\nxxxxxx: Least significant 3 bytes (hex) of DigiBall MAC address.\nyyyyyy (Optional): Least significant 3 bytes (hex) of DigiBall MAC address of second player's ball.";
+        int i = 0;
+        foreach (string arg in args)
+        {
+            switch (i)
+            {
+                case 0:
+                    if (arg == "help" || arg == "-help" || arg == "--help" || arg =="-h")
+                    {
+                        Console.WriteLine(usage);
+                        return;
+                    } else if (arg.Length!=6)
+                    {
+                        Console.WriteLine(usage);
+                        return;
+                    } else
+                    {
+                        balls = 1;
+                        
+                    }
+                    break;
+                case 1:
+                    if (arg.Length != 6)
+                    {
+                        Console.WriteLine(usage);
+                        return;
+                    }
+                    else
+                    {
+                        balls = 2;
+                    }
+                    break;                
+            }            
+            i++;
+        }
+
+        
+
         var watcher = new BluetoothLEAdvertisementWatcher();
         watcher = new BluetoothLEAdvertisementWatcher()
         {
@@ -52,9 +101,6 @@ class Program
                 Console.WriteLine(manufacturerDataString);
             }
         }
-
-        
-
 
     }
 }
