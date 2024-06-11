@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<svg width="240" height="240">
+    <circle cx="120" cy="120" r="100" fill="white"/>
+    <circle cx="120" cy="120" r="10" fill="none" stroke="gray" stroke-width="1"/>
+    <circle cx="120" cy="120" r="20" fill="none" stroke="gray" stroke-width="1"/>
+    <circle cx="120" cy="120" r="30" fill="none" stroke="gray" stroke-width="1"/>
+    <circle cx="120" cy="120" r="40" fill="none" stroke="gray" stroke-width="1"/>   
+    <circle cx="120" cy="120" r="50" fill="none" stroke="gray" stroke-width="1"/>  
+    <circle cx="120" cy="120" r="98" fill="none" stroke="black" stroke-width="3"/> 
+    <line x1="120" y1="21" x2="120" y2="219" style="stroke:gray;stroke-width=1"/> 
+    <line y1="120" x1="21" y2="120" x2="219" style="stroke:gray;stroke-width=1"/> 
+    <line x1="34" y1="70" x2="206" y2="170" style="stroke:gray;stroke-width=1"/>
+    <line x1="34" y2="70" x2="206" y1="170" style="stroke:gray;stroke-width=1"/>
+    <line y1="34" x1="70" y2="206" x2="170" style="stroke:gray;stroke-width=1"/>
+    <line y1="34" x2="70" y2="206" x1="170" style="stroke:gray;stroke-width=1"/>
+    <circle cx="120" cy="120" r="98" fill="none" stroke="black" stroke-width="3"/>   
+    
+    <line id="outline3" x1="120" y1="120" x2="120" y2="120" fill="none" stroke="blue" stroke-width="42"/>
+    <circle id="outline1" cx="120" cy="120" r="21" fill="blue"/>
+    <circle id="outline2" cx="120" cy="120" r="21" fill="blue"/>
+    
+    <!--
+    <line id="guide" x1="120" y1="120" x2="120" y2="120" fill="none" stroke="red" stroke-width="3"/>
+    -->
+    
+    <line id="tip3" x1="120" y1="120" x2="120" y2="120" fill="none" stroke="cyan" stroke-width="4"/>
+    <circle id="tip1" cx="120" cy="120" r="2" fill="cyan"/>
+    <circle id="tip2" cx="120" cy="120" r="2" fill="cyan"/>
+    
+     
+    
+    <script type="text/javascript">
+    
+        //digiball_insert.htm?angle=45&tipPercent=35
+    
+        const params = new Proxy(new URLSearchParams(window.location.search), {
+          get: (searchParams, prop) => searchParams.get(prop),
+        });
+        // Get the value of "some_key" in eg "https://example.com/?some_key=some_value"
+        let angle = params.angle; // "some_value"
+        let tipPercent = params.tipPercent;
+            
+        var tipEstimationError = 0.15;
+        var tipRadiusDime = 0.358;    
+        var tipRadiusCurvatureRatio = tipRadiusDime / 2.25;
+        var drawOffset1 = tipPercent * (1-tipEstimationError) / 100 * 100 * 2 * tipRadiusCurvatureRatio;
+        var drawOffset2 = tipPercent * (1+tipEstimationError) / 100 * 100 * 2 * tipRadiusCurvatureRatio;
+        var r1 = 100 * tipPercent * (1 - tipEstimationError) / 100;
+        var r2 = 100 * tipPercent * (1 + tipEstimationError) / 100;
+        var s1 = r1 + drawOffset1;
+        var px1 = 0;
+        var px2 = 0;
+        
+        var s1 = r1 + drawOffset1;
+        if ((s1 - 21) > r2) {
+            px1 = r1 + 21;
+        } else {
+            px1 = s1;
+        }
+        var s2 = r2 + drawOffset2;
+        if ((s2 - 21) > r2) {
+            px2 = r2 + 21;
+        } else {
+            px2 = s2;
+        }
+        
+        document.getElementById("outline1").setAttribute('cx', 120+px1*Math.sin(Math.PI/180*angle));
+        document.getElementById("outline1").setAttribute('cy', 120-px1*Math.cos(Math.PI/180*angle));
+        
+        document.getElementById("outline2").setAttribute('cx', 120+px2*Math.sin(Math.PI/180*angle));
+        document.getElementById("outline2").setAttribute('cy', 120-px2*Math.cos(Math.PI/180*angle));
+        
+        document.getElementById("outline3").setAttribute('x1', 120+px1*Math.sin(Math.PI/180*angle));
+        document.getElementById("outline3").setAttribute('y1', 120-px1*Math.cos(Math.PI/180*angle));
+        document.getElementById("outline3").setAttribute('x2', 120+px2*Math.sin(Math.PI/180*angle));
+        document.getElementById("outline3").setAttribute('y2', 120-px2*Math.cos(Math.PI/180*angle));
+        
+        //document.getElementById("guide").setAttribute('x2', 120+100*Math.sin(Math.PI/180*angle));
+        //document.getElementById("guide").setAttribute('y2', 120-100*Math.cos(Math.PI/180*angle));
+        
+        document.getElementById("tip1").setAttribute('cx', 120+(1-tipEstimationError)*tipPercent*Math.sin(Math.PI/180*angle));
+        document.getElementById("tip1").setAttribute('cy', 120-(1-tipEstimationError)*tipPercent*Math.cos(Math.PI/180*angle));
+        document.getElementById("tip2").setAttribute('cx', 120+(1+tipEstimationError)*tipPercent*Math.sin(Math.PI/180*angle));
+        document.getElementById("tip2").setAttribute('cy', 120-(1+tipEstimationError)*tipPercent*Math.cos(Math.PI/180*angle));
+        
+        document.getElementById("tip3").setAttribute('x1', 120+(1-tipEstimationError)*tipPercent*Math.sin(Math.PI/180*angle));
+        document.getElementById("tip3").setAttribute('y1', 120-(1-tipEstimationError)*tipPercent*Math.cos(Math.PI/180*angle));
+        document.getElementById("tip3").setAttribute('x2', 120+(1+tipEstimationError)*tipPercent*Math.sin(Math.PI/180*angle));
+        document.getElementById("tip3").setAttribute('y2', 120-(1+tipEstimationError)*tipPercent*Math.cos(Math.PI/180*angle));
+        
+    
+    </script>
+    
+    
+</svg>
+
+</body>
+</html>
