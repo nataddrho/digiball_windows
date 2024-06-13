@@ -12,12 +12,14 @@ using Windows.UI.Xaml.Shapes;
 using static System.Net.Mime.MediaTypeNames;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI;
+using Windows.Devices.Enumeration;
 
 
 public static class Program
 {   
     public static String filterShortMac = "";
     public static int lastShotNumber = -1;
+    public static bool identifyScan = true;
 
     static async Task Main(string[] args)
     {
@@ -39,17 +41,17 @@ public static class Program
                         return;
                     } else
                     {                       
-                        filterShortMac = arg.ToUpper();                        
+                        filterShortMac = arg.ToUpper();
+                        identifyScan = false;
                     }
                     break;                
             }            
             i++;
         }  
         
-        if (i==0)
-        {
+        if (identifyScan) {
             Console.WriteLine(usage);
-            return;
+            Console.WriteLine("Scanning for all DigiBall devices only. Images will not be updated until restarted with a MAC address filter...");
         }
        
         var watcher = new BluetoothLEAdvertisementWatcher();
@@ -128,76 +130,101 @@ public static class Program
         string dir = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
         string cueball = System.IO.Path.Combine(dir, "blank.png");
 
-        //Bitmap image = new Bitmap(width, height);
-        Bitmap image = new Bitmap(cueball);
+        
 
-        // Create a graphics object from the image
-        Graphics graphics = Graphics.FromImage(image);
 
-        //Tip outline
-        Pen pen = new Pen(System.Drawing.Color.Black);
-        Brush brush = new SolidBrush(System.Drawing.Color.Black);        
-        pen.Width = 2 * tipRadius;
-        float x0 = (float)(ballRadius + px1 * ax);
-        float y0 = (float)(ballRadius + px1 * ay);
-        float x1 = (float)(ballRadius + px2 * ax);
-        float y1 = (float)(ballRadius + px2 * ay);
-        graphics.DrawLine(pen, x0, y0, x1, y1);
-        FillCircle(graphics, brush, x0, y0, tipRadius);
-        FillCircle(graphics, brush, x1, y1, tipRadius);
-
-        // Save the image to a file       
-        image.Save("digiball_tipOutline.png");
-
-        //Grid        
-        pen.Width = 1;
-        for (int i = 0; i < 5; i++)
+        for (int j = 0; j < 2; j++)
         {
-            DrawCircle(graphics, pen, ballRadius, ballRadius, (float)(ballRadius * 0.1 * (i + 1)));
-        }
-        float a = (float)(Math.Sqrt(3) / 2);
-        float b = (float)0.5;
-        graphics.DrawLine(pen, ballRadius, 0, ballRadius, ballDiameter);
-        graphics.DrawLine(pen, 0, ballRadius, ballDiameter, ballRadius);        
-        graphics.DrawLine(pen, ballRadius * (1 + a), ballRadius * (1 + b), ballRadius * (1 - a), ballRadius * (1 - b));
-        graphics.DrawLine(pen, ballRadius * (1 + a), ballRadius * (1 - b), ballRadius * (1 - a), ballRadius * (1 + b));
-        graphics.DrawLine(pen, ballRadius * (1 + b), ballRadius * (1 + a), ballRadius * (1 - b), ballRadius * (1 - a));
-        graphics.DrawLine(pen, ballRadius * (1 + b), ballRadius * (1 - a), ballRadius * (1 - b), ballRadius * (1 + a));
 
-        // Save the image to a file       
-        image.Save("digiball_tipOutlineGrid.png");
+            //Bitmap image = new Bitmap(width, height);
+            Bitmap image = new Bitmap(cueball);
 
-        //Tip contact point        
-        pen.Width = 6;
-        pen.Color = System.Drawing.Color.Cyan;
-        brush = new SolidBrush(System.Drawing.Color.Cyan);
-        x0 = (float)(ballRadius + r1 * ax);
-        y0 = (float)(ballRadius + r1 * ay);
-        x1 = (float)(ballRadius + r2 * ax);
-        y1 = (float)(ballRadius + r2 * ay);
-        graphics.DrawLine(pen, x0, y0, x1, y1);
-        FillCircle(graphics, brush, x0, y0, 3);
-        FillCircle(graphics, brush, x1, y1, 3);
+            // Create a graphics object from the image
+            Graphics graphics = Graphics.FromImage(image);
 
-        // Save the image to a file       
-        image.Save("digiball_tipOutlineGridContact.png");
+            //Tip outline
+            Pen pen = new Pen(System.Drawing.Color.Black);
+            Brush brush = new SolidBrush(System.Drawing.Color.Black);
+            pen.Width = 2 * tipRadius;
+            float x0 = (float)(ballRadius + px1 * ax);
+            float y0 = (float)(ballRadius + px1 * ay);
+            float x1 = (float)(ballRadius + px2 * ax);
+            float y1 = (float)(ballRadius + px2 * ay);
+            graphics.DrawLine(pen, x0, y0, x1, y1);
+            FillCircle(graphics, brush, x0, y0, tipRadius);
+            FillCircle(graphics, brush, x1, y1, tipRadius);
 
-        //Guide
-        pen.Color = System.Drawing.Color.Red;
-        pen.Width = 4;
-        graphics.DrawLine(pen, ballRadius, ballRadius, (float)(ballRadius*(1+ax)), (float)(ballRadius*(1+ay)));
-        pen.Width = 6;
-        pen.Color = System.Drawing.Color.Cyan;
-        graphics.DrawLine(pen, x0, y0, x1, y1);
-        FillCircle(graphics, brush, x0, y0, 3);
-        FillCircle(graphics, brush, x1, y1, 3);
+            // Save the image to a file
+            if (j == 0)
+            {
+                image.Save("digiball_tipOutline.png");
+            }
 
-        // Save the image to a file               
-        image.Save("digiball_tipOutlineGridContactAngle.png");
+            //Grid
+            if (j > 0)
+            {
+                pen.Width = 1;
+                for (int i = 0; i < 5; i++)
+                {
+                    DrawCircle(graphics, pen, ballRadius, ballRadius, (float)(ballRadius * 0.1 * (i + 1)));
+                }
+                float a = (float)(Math.Sqrt(3) / 2);
+                float b = (float)0.5;
+                graphics.DrawLine(pen, ballRadius, 0, ballRadius, ballDiameter);
+                graphics.DrawLine(pen, 0, ballRadius, ballDiameter, ballRadius);
+                graphics.DrawLine(pen, ballRadius * (1 + a), ballRadius * (1 + b), ballRadius * (1 - a), ballRadius * (1 - b));
+                graphics.DrawLine(pen, ballRadius * (1 + a), ballRadius * (1 - b), ballRadius * (1 - a), ballRadius * (1 + b));
+                graphics.DrawLine(pen, ballRadius * (1 + b), ballRadius * (1 + a), ballRadius * (1 - b), ballRadius * (1 - a));
+                graphics.DrawLine(pen, ballRadius * (1 + b), ballRadius * (1 - a), ballRadius * (1 - b), ballRadius * (1 + a));
 
-        // Dispose of the graphics object and image
-        graphics.Dispose();
-        image.Dispose();
+                // Save the image to a file       
+                image.Save("digiball_tipOutlineGrid.png");
+            }
+
+            //Tip contact point        
+            pen.Width = 6;
+            pen.Color = System.Drawing.Color.Cyan;
+            brush = new SolidBrush(System.Drawing.Color.Cyan);
+            x0 = (float)(ballRadius + r1 * ax);
+            y0 = (float)(ballRadius + r1 * ay);
+            x1 = (float)(ballRadius + r2 * ax);
+            y1 = (float)(ballRadius + r2 * ay);
+            graphics.DrawLine(pen, x0, y0, x1, y1);
+            FillCircle(graphics, brush, x0, y0, 3);
+            FillCircle(graphics, brush, x1, y1, 3);
+
+            // Save the image to a file
+            if (j == 0)
+            {
+                image.Save("digiball_tipOutlineContact.png");
+            } else
+            {
+                image.Save("digiball_tipOutlineGridContact.png");
+            }
+
+            //Guide
+            pen.Color = System.Drawing.Color.Red;
+            pen.Width = 4;
+            graphics.DrawLine(pen, ballRadius, ballRadius, (float)(ballRadius * (1 + ax)), (float)(ballRadius * (1 + ay)));
+            pen.Width = 6;
+            pen.Color = System.Drawing.Color.Cyan;
+            graphics.DrawLine(pen, x0, y0, x1, y1);
+            FillCircle(graphics, brush, x0, y0, 3);
+            FillCircle(graphics, brush, x1, y1, 3);
+
+            // Save the image to a file
+            if (j == 0)
+            {
+                image.Save("digiball_tipOutlineContactAngle.png");
+            } else
+            {
+                image.Save("digiball_tipOutlineGridContactAngle.png");
+            }
+
+            // Dispose of the graphics object and image
+            graphics.Dispose();
+            image.Dispose();
+        }        
     }
 
     private static async void Watcher_Received(
@@ -207,8 +234,7 @@ public static class Program
         var device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);       
 
         if (device != null)
-        {
-            //Console.WriteLine("{0:X}", device.BluetoothAddress);
+        {           
             var manufacturerSections = eventArgs.Advertisement.ManufacturerData;        
             if (manufacturerSections.Count > 0)
             {
@@ -219,17 +245,19 @@ public static class Program
                 {
                     reader.ReadBytes(data);
                 }
-                // Print the company ID + the raw data in hex format
-                String manufacturerConsoleString = string.Format("{0:X}:{1}",
+                
+                String shortMac = BitConverter.ToString(data).Replace("-", string.Empty).Substring(0, 6);
+                
+                String manufacturerConsoleString = string.Format("{0}:{1:X}:{2}",
+                    shortMac,
                     device.BluetoothAddress,
                     BitConverter.ToString(data));
 
-                //Console.WriteLine(manufacturerConsoleString);
-
-                //Parse data
-                // Print the company ID + the raw data in hex format
-                String shortMac = BitConverter.ToString(data).Replace("-", string.Empty).Substring(0, 6);
-                if (filterShortMac==shortMac)
+                if (identifyScan)
+                {
+                    Console.WriteLine(manufacturerConsoleString);
+                }
+                else if (filterShortMac==shortMac)
                 {
                     if (data.Length == 24) {
                         int deviceType = data[3];
@@ -245,7 +273,7 @@ public static class Program
 
                             int angle = Convert.ToInt32(180 / Math.PI * Math.Atan2(spinHorzDPS, spinVertDPS));
 
-                            Console.WriteLine("MAC: {0}, Shot Number: {1}, Angle: {2}, Tip Percent: {3}", shortMac, shotNumber, angle, tipPercent);
+                            Console.WriteLine("MAC: {0}, Shot Number: {1}, Seconds: {2}, Angle: {3}, Tip Percent: {4}", shortMac, shotNumber, secondsMotionless, angle, tipPercent);
 
                             if (dataReady && lastShotNumber!=shotNumber)
                             {                             
