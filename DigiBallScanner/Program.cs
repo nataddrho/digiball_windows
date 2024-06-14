@@ -13,6 +13,7 @@ using static System.Net.Mime.MediaTypeNames;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI;
 using Windows.Devices.Enumeration;
+using DigiBallScanner.Properties;
 
 
 public static class Program
@@ -126,18 +127,16 @@ public static class Program
             px2 = s2;
         }
 
-        // Create a Bitmap object from a file.
-        string dir = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        string cueball = System.IO.Path.Combine(dir, "blank.png");
-
-        
-
+        // Get bitmap file location
+        //string dir = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+        //string cueball = System.IO.Path.Combine(dir, "blank.png");
 
         for (int j = 0; j < 2; j++)
         {
+            
+            //Bitmap image = new Bitmap(cueball);
+            Bitmap image = new Bitmap(Resources.blank); //Create from resource
 
-            //Bitmap image = new Bitmap(width, height);
-            Bitmap image = new Bitmap(cueball);
 
             // Create a graphics object from the image
             Graphics graphics = Graphics.FromImage(image);
