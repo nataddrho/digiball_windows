@@ -16,7 +16,7 @@ Download and run the installation file DigiBallScanner/innosetup/Output/DigiBall
  - Go to Start and type "devmgmt.msc" to open the Device Manager.
  - Find Bluetooth and expand.
  - Verify that one entry reads "Microsoft Bluetooth LE Enumerator". If you do not see this then your adapter does not support BLE. A BLE USB dongle can be purchased from a variety of vendors.
- - You may need to right-click and disable the classic Bluetooth adapter "Intel(R) Wireless Bluetooth(R) if it causes a conflict."
+ - You may need to right-click and disable the classic Bluetooth adapter "Intel(R) Wireless Bluetooth(R)" if it causes a conflict.
 
 ### Example of usage:
 
