@@ -7,6 +7,13 @@ Windows command-line tool for scanning DigiBall devices with Bluetooth LE, and g
 
 Windows 10, BT 4.0 adapter
 
+### Configuring Bluetooth LE adapter
+
+ - Go to Start and type "devmgmt.msc" to open the Device Manager.
+ - Find Bluetooth and expand.
+ - Verify that one entry reads "Microsoft Bluetooth LE Enumerator". If you do not see this then your adapter does not support BLE. A BLE USB dongle can be purchased from a variety of vendors.
+ - You may need to right-click and disable the classic Bluetooth adapter "Intel(R) Wireless Bluetooth(R) if it causes a conflict."
+
 ### Example of usage:
 
 #### Scan all mode 
@@ -50,7 +57,7 @@ MAC: 6EE780, Shot Number: 4, Seconds: 0, Angle: -60, Tip Percent: 11
 
 ```
 
- - Least 3 significant bytes of the MAC address were given as the only argument. This can be easily accomplished by appending to the shortcut target."
+ - Least 3 significant bytes of the MAC address were given as the only argument. This can be easily accomplished by appending to the shortcut target.
  - Images will be updated in the installation folder. By default this is in C:\Users\{username}\AppData\Local\Programs\DigiBallScanner
 
 #### List of images generated (see DigiBallScanner/example folder)
