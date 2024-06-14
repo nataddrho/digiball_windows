@@ -7,6 +7,10 @@ Windows command-line tool for scanning DigiBall devices with Bluetooth LE, and g
 
 Windows 10, BT 4.0 adapter
 
+### Installation:
+
+Download and run the installation file DigiBallScanner/innosetup/Output/DigiBallScannerSetup.exe
+
 ### Configuring Bluetooth LE adapter
 
  - Go to Start and type "devmgmt.msc" to open the Device Manager.
