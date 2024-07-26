@@ -21,6 +21,7 @@ public static class Program
     public static String filterShortMac = "";
     public static int lastShotNumber = -1;
     public static bool identifyScan = true;
+    public static int recvCount = 0;
 
     static async Task Main(string[] args)
     {
@@ -69,6 +70,7 @@ public static class Program
         watcher.Start();
 
         await Task.Delay(Timeout.Infinite);
+        Console.WriteLine("Done.");
     }
 
     private static void DrawCircle(this Graphics g, Pen pen,
@@ -85,7 +87,7 @@ public static class Program
                       radius + radius, radius + radius);
     }
 
-    private static void drawImage(int angle, int tipPercent)
+    private static void drawImage(int angle, int tipPercent, bool showDeviation)
     {
         //Update cueball picture
 
@@ -95,7 +97,7 @@ public static class Program
 
         double ax = Math.Sin(Math.PI / 180 * angle);
         double ay = -Math.Cos(Math.PI / 180 * angle);
-        double tipEstimationError = 0.15;
+        double tipEstimationError = showDeviation ? 0.15 : 0;
         double tipRadiusDime = 0.358;
         double tipRadiusCurvatureRatio = tipRadiusDime / 1.125;
         double est1 = tipPercent * (1 - tipEstimationError) / 100;
@@ -149,9 +151,15 @@ public static class Program
             float y0 = (float)(ballRadius + px1 * ay);
             float x1 = (float)(ballRadius + px2 * ax);
             float y1 = (float)(ballRadius + px2 * ay);
-            graphics.DrawLine(pen, x0, y0, x1, y1);
-            FillCircle(graphics, brush, x0, y0, tipRadius);
-            FillCircle(graphics, brush, x1, y1, tipRadius);
+            if (showDeviation)
+            {
+                graphics.DrawLine(pen, x0, y0, x1, y1);
+                FillCircle(graphics, brush, x0, y0, tipRadius);
+                FillCircle(graphics, brush, x1, y1, tipRadius);
+            } else
+            {
+                FillCircle(graphics, brush, x0, y0, tipRadius);
+            }
 
             // Save the image to a file
             if (j == 0)
@@ -167,10 +175,10 @@ public static class Program
                 {
                     DrawCircle(graphics, pen, ballRadius, ballRadius, (float)(ballRadius * 0.1 * (i + 1)));
                 }
-                float a = (float)(Math.Sqrt(3) / 2);
-                float b = (float)0.5;
-                graphics.DrawLine(pen, ballRadius, 0, ballRadius, ballDiameter);
-                graphics.DrawLine(pen, 0, ballRadius, ballDiameter, ballRadius);
+                float a = (float)(Math.Sqrt(3) / 2)/2;
+                float b = (float)0.5/2;
+                graphics.DrawLine(pen, ballRadius, ballRadius/2, ballRadius, 3*ballRadius/2);
+                graphics.DrawLine(pen, ballRadius / 2, ballRadius, 3 * ballRadius / 2, ballRadius);
                 graphics.DrawLine(pen, ballRadius * (1 + a), ballRadius * (1 + b), ballRadius * (1 - a), ballRadius * (1 - b));
                 graphics.DrawLine(pen, ballRadius * (1 + a), ballRadius * (1 - b), ballRadius * (1 - a), ballRadius * (1 + b));
                 graphics.DrawLine(pen, ballRadius * (1 + b), ballRadius * (1 + a), ballRadius * (1 - b), ballRadius * (1 - a));
@@ -188,9 +196,15 @@ public static class Program
             y0 = (float)(ballRadius + r1 * ay);
             x1 = (float)(ballRadius + r2 * ax);
             y1 = (float)(ballRadius + r2 * ay);
-            graphics.DrawLine(pen, x0, y0, x1, y1);
-            FillCircle(graphics, brush, x0, y0, 3);
-            FillCircle(graphics, brush, x1, y1, 3);
+            if (showDeviation)
+            {
+                graphics.DrawLine(pen, x0, y0, x1, y1);
+                FillCircle(graphics, brush, x0, y0, 3);
+                FillCircle(graphics, brush, x1, y1, 3);
+            } else
+            {
+                FillCircle(graphics, brush, x0, y0, 3);
+            }
 
             // Save the image to a file
             if (j == 0)
@@ -230,10 +244,11 @@ public static class Program
         BluetoothLEAdvertisementWatcher watcher,
         BluetoothLEAdvertisementReceivedEventArgs eventArgs)
     {
-        var device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);       
-
+        var device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
+        
         if (device != null)
-        {           
+        {
+            recvCount++;
             var manufacturerSections = eventArgs.Advertisement.ManufacturerData;        
             if (manufacturerSections.Count > 0)
             {
@@ -247,7 +262,8 @@ public static class Program
                 
                 String shortMac = BitConverter.ToString(data).Replace("-", string.Empty).Substring(0, 6);
                 
-                String manufacturerConsoleString = string.Format("{0}:{1:X}:{2}",
+                String manufacturerConsoleString = string.Format("{0}:{1}:{2:X}:{3}",
+                    recvCount,
                     shortMac,
                     device.BluetoothAddress,
                     BitConverter.ToString(data));
@@ -272,12 +288,12 @@ public static class Program
 
                             int angle = Convert.ToInt32(180 / Math.PI * Math.Atan2(spinHorzDPS, spinVertDPS));
 
-                            Console.WriteLine("MAC: {0}, Shot Number: {1}, Seconds: {2}, Angle: {3}, Tip Percent: {4}", shortMac, shotNumber, secondsMotionless, angle, tipPercent);
-
+                            Console.WriteLine("{0}: MAC: {1}, Shot Number: {2}, Seconds: {3}, Angle: {4}, Tip Percent: {5}", recvCount, shortMac, shotNumber, secondsMotionless, angle, tipPercent);
+                            
                             if (dataReady && lastShotNumber!=shotNumber)
                             {                             
-                                lastShotNumber = shotNumber;
-                                drawImage(angle, tipPercent);
+                                lastShotNumber = shotNumber;                                
+                                drawImage(angle, tipPercent, false);
                             }
 
 
