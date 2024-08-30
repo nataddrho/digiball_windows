@@ -22,12 +22,13 @@ public static class Program
     public static String filterShortMac = "";
     public static int lastShotNumber = -1;
     public static bool identifyScan = true;
+    public static bool scanAll = false;
     public static int recvCount = 0;
 
     static async Task Main(string[] args)
-    {
-        String appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        String usage = "Usage: DigiBallScanner.exe xxxxxx \nxxxxxx: Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\n";
+    {      
+        String appDataPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+        String usage = "Usage: DigiBallScanner.exe xxxxxx \nxxxxxx: Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nall:    Scans all visible devices (test)";
         Console.WriteLine("DigiBall Console for Windows - Generates realtime ball graphics for streaming software.\n");
         Console.WriteLine("Output images will be generated in:");
         Console.WriteLine(string.Format("{0}\n", appDataPath));
@@ -49,7 +50,14 @@ public static class Program
                     } else
                     {
                         filterShortMac = arg.ToUpper();
-                        identifyScan = false;
+                        if (filterShortMac == "ALL")
+                        {
+                            scanAll = true;
+                        }
+                        else
+                        {
+                            identifyScan = false;
+                        }
                     }
                     break;
             }
@@ -58,7 +66,14 @@ public static class Program
 
         if (identifyScan) {
             Console.WriteLine(usage);
-            Console.WriteLine("Scanning for all DigiBall devices only. Images will not be updated until restarted with a MAC address filter...");
+            if (scanAll)
+            {
+                Console.WriteLine("Scanning for all visible BLE devices. Images will not be updated until restarted with a MAC address filter...");
+            }
+            else
+            {
+                Console.WriteLine("Scanning for all DigiBall devices only. Images will not be updated until restarted with a MAC address filter...");
+            }
         }
 
         var watcher = new BluetoothLEAdvertisementWatcher();
@@ -69,7 +84,7 @@ public static class Program
 
         var manufacturerData = new BluetoothLEManufacturerData();
         manufacturerData.CompanyId = 0x03DE; //Nathan Rhoades LLC       
-        //watcher.AdvertisementFilter.Advertisement.ManufacturerData.Add(manufacturerData);
+        watcher.AdvertisementFilter.Advertisement.ManufacturerData.Add(manufacturerData);
 
         watcher.Received += Watcher_Received;
 
