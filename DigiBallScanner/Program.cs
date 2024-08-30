@@ -14,6 +14,7 @@ using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI;
 using Windows.Devices.Enumeration;
 using DigiBallScanner.Properties;
+using Windows.Devices.Printers;
 
 
 public static class Program
@@ -25,37 +26,41 @@ public static class Program
 
     static async Task Main(string[] args)
     {
+        String appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        String usage = "Usage: DigiBallScanner.exe xxxxxx \nxxxxxx: Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\n";
+        Console.WriteLine("DigiBall Console for Windows - Generates realtime ball graphics for streaming software.\n");
+        Console.WriteLine("Output images will be generated in:");
+        Console.WriteLine(string.Format("{0}\n", appDataPath));
 
-        String usage = "Usage: xxxxxx \nxxxxxx: Least significant 3 bytes (hex) of DigiBall MAC address.";
         int i = 0;
         foreach (string arg in args)
         {
             switch (i)
             {
                 case 0:
-                    if (arg == "help" || arg == "-help" || arg == "--help" || arg =="-h")
+                    if (arg == "help" || arg == "-help" || arg == "--help" || arg == "-h")
                     {
                         Console.WriteLine(usage);
                         return;
-                    } else if (arg.Length!=6)
+                    } else if (arg.Length != 6)
                     {
                         Console.WriteLine(usage);
                         return;
                     } else
-                    {                       
+                    {
                         filterShortMac = arg.ToUpper();
                         identifyScan = false;
                     }
-                    break;                
-            }            
+                    break;
+            }
             i++;
-        }  
-        
+        }
+
         if (identifyScan) {
             Console.WriteLine(usage);
             Console.WriteLine("Scanning for all DigiBall devices only. Images will not be updated until restarted with a MAC address filter...");
         }
-       
+
         var watcher = new BluetoothLEAdvertisementWatcher();
         watcher = new BluetoothLEAdvertisementWatcher()
         {
@@ -64,13 +69,15 @@ public static class Program
 
         var manufacturerData = new BluetoothLEManufacturerData();
         manufacturerData.CompanyId = 0x03DE; //Nathan Rhoades LLC       
-        watcher.AdvertisementFilter.Advertisement.ManufacturerData.Add(manufacturerData);
+        //watcher.AdvertisementFilter.Advertisement.ManufacturerData.Add(manufacturerData);
 
         watcher.Received += Watcher_Received;
-        watcher.Start();
 
-        await Task.Delay(Timeout.Infinite);
-        Console.WriteLine("Done.");
+        //Scan and restart every 5 seconds
+        while (1 == 1) {
+            watcher.Start();
+            await Task.Delay(5000);
+        }
     }
 
     private static void DrawCircle(this Graphics g, Pen pen,
@@ -245,6 +252,7 @@ public static class Program
         BluetoothLEAdvertisementReceivedEventArgs eventArgs)
     {
         var device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
+        String timeStamp = DateTime.Now.ToString("hh:mm:ss");
         
         if (device != null)
         {
@@ -262,7 +270,8 @@ public static class Program
                 
                 String shortMac = BitConverter.ToString(data).Replace("-", string.Empty).Substring(0, 6);
                 
-                String manufacturerConsoleString = string.Format("{0}:{1}:{2:X}:{3}",
+                String manufacturerConsoleString = string.Format("{0} {1} {2} {3:X} {4}",
+                    timeStamp,
                     recvCount,
                     shortMac,
                     device.BluetoothAddress,
@@ -288,7 +297,8 @@ public static class Program
 
                             int angle = Convert.ToInt32(180 / Math.PI * Math.Atan2(spinHorzDPS, spinVertDPS));
 
-                            Console.WriteLine("{0}: MAC: {1}, Shot Number: {2}, Seconds: {3}, Angle: {4}, Tip Percent: {5}", recvCount, shortMac, shotNumber, secondsMotionless, angle, tipPercent);
+                            Console.WriteLine("{0} {1}: MAC: {2}, Shot Number: {3}, Seconds: {4}, Angle: {5}, Tip Percent: {6}", 
+                                timeStamp, recvCount, shortMac, shotNumber, secondsMotionless, angle, tipPercent);
                             
                             if (dataReady && lastShotNumber!=shotNumber)
                             {                             
@@ -300,11 +310,6 @@ public static class Program
                         }
                     }
                 }
-
-
-
-
-
 
             }
         }
