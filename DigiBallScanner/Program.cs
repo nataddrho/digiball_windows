@@ -15,6 +15,7 @@ using Windows.UI;
 using Windows.Devices.Enumeration;
 using DigiBallScanner.Properties;
 using Windows.Devices.Printers;
+using Windows.Globalization;
 
 
 public static class Program
@@ -112,13 +113,52 @@ public static class Program
                       radius + radius, radius + radius);
     }
 
-    private static void drawImage(int angle, int tipPercent, bool showDeviation)
+    private static String degrees2clock(int angle)
+    {
+        // Convert degrees into hours and minutes (o'clocks)
+        double a = Convert.ToDouble(angle);
+        if (a < 0) a += 360;
+        int hour = (int)Math.Floor(a * 12 / 360.0);
+        double minute = a * 12 / 360.0 - Convert.ToDouble(hour);
+        if (hour == 0) hour = 12;
+        minute *= 60;        
+        String s;
+        if (minute < 10)
+        {           
+            s = String.Format("{0}:0{1}", hour, (int)minute);
+        }
+        else
+        {
+            s = String.Format("{0}:{1}", hour, (int)minute);
+        }
+        return s;
+    }
+
+    private static void drawImage(int rpm, int angle, int tipPercent, bool showDeviation)
     {
         //Update cueball picture
 
         int ballDiameter = 345; //Size of blank cueball image in pixels, square
         int ballRadius = ballDiameter / 2;
         int tipRadius = 35;
+        String clock = degrees2clock(angle);
+
+        String stats = "";
+
+        if (tipPercent>0)
+        {            
+            double speedEstimationMPH = 0.26775 * Convert.ToDouble(rpm) / Convert.ToDouble(tipPercent);
+            if (speedEstimationMPH < 1) stats = "Soft";
+            else if (speedEstimationMPH < 2) stats = "Slow";
+            else if (speedEstimationMPH < 4) stats = "Medium";
+            else if (speedEstimationMPH < 7) stats = "Fast";
+            else stats = "Hard";
+            stats += "\n";
+        }
+
+        int TipPercentFives = (int)(Math.Round((Convert.ToDouble(tipPercent) / 5)) * 5); //Multiple of 5
+
+        stats = String.Format("{0}{1} rpm\n{2}\n{3} pfc", stats, rpm, clock, TipPercentFives);
 
         double ax = Math.Sin(Math.PI / 180 * angle);
         double ay = -Math.Cos(Math.PI / 180 * angle);
@@ -162,11 +202,10 @@ public static class Program
         {
             
             //Bitmap image = new Bitmap(cueball);
-            Bitmap image = new Bitmap(Resources.blank); //Create from resource
-
+            Bitmap cueballImage = new Bitmap(Resources.blank); //Create from resource
 
             // Create a graphics object from the image
-            Graphics graphics = Graphics.FromImage(image);
+            Graphics graphics = Graphics.FromImage(cueballImage);
 
             //Tip outline
             Pen pen = new Pen(System.Drawing.Color.Black);
@@ -189,7 +228,7 @@ public static class Program
             // Save the image to a file
             if (j == 0)
             {
-                image.Save("digiball_tipOutline.png");
+                cueballImage.Save("digiball_tipOutline.png");
             }
 
             //Grid
@@ -210,7 +249,7 @@ public static class Program
                 graphics.DrawLine(pen, ballRadius * (1 + b), ballRadius * (1 - a), ballRadius * (1 - b), ballRadius * (1 + a));
 
                 // Save the image to a file       
-                image.Save("digiball_tipOutlineGrid.png");
+                cueballImage.Save("digiball_tipOutlineGrid.png");
             }
 
             //Tip contact point        
@@ -234,10 +273,10 @@ public static class Program
             // Save the image to a file
             if (j == 0)
             {
-                image.Save("digiball_tipOutlineContact.png");
+                cueballImage.Save("digiball_tipOutlineContact.png");
             } else
             {
-                image.Save("digiball_tipOutlineGridContact.png");
+                cueballImage.Save("digiball_tipOutlineGridContact.png");
             }
 
             //Guide
@@ -253,15 +292,37 @@ public static class Program
             // Save the image to a file
             if (j == 0)
             {
-                image.Save("digiball_tipOutlineContactAngle.png");
+                cueballImage.Save("digiball_tipOutlineContactAngle.png");
             } else
             {
-                image.Save("digiball_tipOutlineGridContactAngle.png");
+                cueballImage.Save("digiball_tipOutlineGridContactAngle.png");
             }
 
             // Dispose of the graphics object and image
             graphics.Dispose();
-            image.Dispose();
+            cueballImage.Dispose();
+
+            // Generate stats image
+            Bitmap statsImage = new Bitmap(ballDiameter, ballDiameter, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+
+            // Create a graphics object from the image
+            graphics = Graphics.FromImage(statsImage);
+
+            RectangleF rectF1 = new RectangleF(0, 0, statsImage.Width, statsImage.Height);
+            RectangleF rectF2 = new RectangleF(2, 2, statsImage.Width-2, statsImage.Height-2);
+
+            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            graphics.DrawString(stats, new Font("Tahoma", 48), Brushes.Black, rectF2);
+            graphics.DrawString(stats, new Font("Tahoma", 48), Brushes.White, rectF1);
+
+            statsImage.Save("digiball_stats.png");
+
+            // Dispose of the graphics object and image
+            graphics.Dispose();
+            statsImage.Dispose();
         }        
     }
 
@@ -311,9 +372,13 @@ public static class Program
                             int secondsMotionless = (data[7] & 0x03) * 256 + data[8];
                             int tipPercent = highGAccelAvailable ? data[11] : 0;
                             int spinHorzDPS = BitConverter.ToInt16(new byte[] { data[14], data[13] }, 0);
-                            int spinVertDPS = BitConverter.ToInt16(new byte[] { data[16], data[15] }, 0);                           
+                            int spinVertDPS = BitConverter.ToInt16(new byte[] { data[16], data[15] }, 0);
 
                             int angle = Convert.ToInt32(180 / Math.PI * Math.Atan2(spinHorzDPS, spinVertDPS));
+
+                            double spinMagDPS = Math.Sqrt(Math.Pow(spinHorzDPS, 2) + Math.Pow(spinVertDPS, 2));
+                            int rpm = (int)Math.Round(60 / 360.0 * spinMagDPS); 
+                             
 
                             Console.WriteLine("{0} {1}: MAC: {2}, Shot Number: {3}, Seconds: {4}, Angle: {5}, Tip Percent: {6}", 
                                 timeStamp, recvCount, shortMac, shotNumber, secondsMotionless, angle, tipPercent);
@@ -321,7 +386,7 @@ public static class Program
                             if (dataReady && lastShotNumber!=shotNumber)
                             {                             
                                 lastShotNumber = shotNumber;                                
-                                drawImage(angle, tipPercent, false);
+                                drawImage(rpm, angle, tipPercent, false);
                             }
 
 
