@@ -25,11 +25,12 @@ public static class Program
     public static bool identifyScan = true;
     public static bool scanAll = false;
     public static int recvCount = 0;
+    public static double tipPercentMultiplier = 1.0;
 
     static async Task Main(string[] args)
     {      
         String appDataPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        String usage = "Usage: DigiBallScanner.exe xxxxxx \nxxxxxx: Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nall:    Scans all visible devices (test)\n";
+        String usage = "Usage: DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\ny=pool:  Uses pool ball diameter (default)\ny=carom: Uses carom ball diameter";
         Console.WriteLine("DigiBall Console for Windows - Generates realtime ball graphics for streaming software.\n");
         Console.WriteLine("Output images will be generated in:");
         Console.WriteLine(string.Format("{0}\n", appDataPath));
@@ -44,19 +45,33 @@ public static class Program
                     {
                         Console.WriteLine(usage);
                         return;
-                    } else if (arg=="all" || arg=="ALL")
+                    }
+                    else if (arg == "all" || arg == "ALL")
                     {
                         identifyScan = true;
                         scanAll = true;
-                    
-                    } else if (arg.Length != 6)
+                    }
+                    else if (arg.Length != 6)
                     {
                         Console.WriteLine(usage);
                         return;
-                    } else
+                    }
+                    else
                     {
                         filterShortMac = arg.ToUpper();
-                        identifyScan = false;                        
+                        identifyScan = false;
+                    }
+                    break;
+
+                case 1:
+                    if (arg == "pool")
+                    {
+                        tipPercentMultiplier = 1.0;
+                    }
+                    else if (arg == "carom")
+                    {
+                        Console.WriteLine("Carom ball diameter used.");
+                        tipPercentMultiplier = 61.5 / 57.15; //mm
                     }
                     break;
             }
@@ -371,6 +386,8 @@ public static class Program
                             bool highGAccelAvailable = (data[7] >> 4)==1;
                             int secondsMotionless = (data[7] & 0x03) * 256 + data[8];
                             int tipPercent = highGAccelAvailable ? data[11] : 0;
+                            tipPercent = (int)Math.Round(Convert.ToDouble(tipPercent) * tipPercentMultiplier);
+                            if (tipPercent > 60) tipPercent = 60;
                             int spinHorzDPS = BitConverter.ToInt16(new byte[] { data[14], data[13] }, 0);
                             int spinVertDPS = BitConverter.ToInt16(new byte[] { data[16], data[15] }, 0);
 
