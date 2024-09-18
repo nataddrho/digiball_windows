@@ -1,7 +1,7 @@
 
 
 # DigiBallScanner
-Windows command-line tool for scanning DigiBall devices with Bluetooth LE, and generating images (.png) of tip contact position when new shots are detected. The images can be used as overlays for streaming software such as OBS.
+Windows command-line tool for scanning DigiBall devices with Bluetooth LE, and generating images (.png) of tip contact position and statistics when new shots are detected. The images can be used as overlays for streaming software such as OBS.
 
 ### Requirements:
 
@@ -20,32 +20,55 @@ Download and run the installation file DigiBallScanner/innosetup/Output/DigiBall
 
 ### Example of usage:
 
-#### Scan all mode 
+DigiBallScanner uses command line arguments. For convenience you can add/create Desktop shortcuts with the appropriate arguments.
+
+#### Scan for all DigiBall devices 
 
 **DigiBallScanner.exe**
 
 ```
-Usage: xxxxxx
-xxxxxx: Least significant 3 bytes (hex) of DigiBall MAC address.
+DigiBall Console for Windows - Generates realtime ball graphics for streaming software.
+
+Output images will be generated in:
+C:\Users\usnrho\AppData\Local\Programs\DigiBallScanner
+
+Usage: DigiBallScanner.exe x y
+x:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.
+x=all:   Scans all visible devices
+y=pool:  Uses pool ball diameter (default)
+y=carom: Uses carom ball diameter
 Scanning for all DigiBall devices only. Images will not be updated until restarted with a MAC address filter...
-A2DB54:EA37A7A2DB54:A2-DB-54-01-39-95-1F-C0-01-00-F8-3C-00-00-FC-01-DB-5B-04-04-04-03-02-01
-A2DB54:EA37A7A2DB54:A2-DB-54-01-39-95-1F-C0-01-00-F8-3C-00-00-FC-01-DB-5B-04-04-04-03-02-01
-A2DB54:EA37A7A2DB54:A2-DB-54-01-39-93-1F-C0-01-00-F8-3C-00-00-FC-01-DB-DB-00-00-00-00-00-00
-6EE780:FCA0D56EE780:6E-E7-80-01-39-95-03-D8-01-00-F8-17-00-00-59-00-31-78-02-02-05-08-42-4F
-6EE780:FCA0D56EE780:6E-E7-80-01-39-95-03-D8-01-00-F8-17-00-00-59-00-31-78-02-02-05-08-42-4F
-6EE780:FCA0D56EE780:6E-E7-80-01-39-96-03-D8-01-00-F8-17-00-00-59-00-31-78-02-02-05-08-42-4F
-6EE780:FCA0D56EE780:6E-E7-80-01-39-96-03-D8-01-00-F8-17-00-00-59-00-31-78-02-02-05-08-42-4F
 ```
 
- - Will show all devices found plus the hex representation of the GAP advertisement packet. Scan responses are not processed.
+ - Will show all DigiBall devices found including the hex representation of the GAP advertisement packet. Scan responses are not processed.
  - No images are updated in this mode.
 
+#### Scan for all BLE devices in local area 
 
-#### Scan for specific device 
+**DigiBallScanner.exe all**
+
+```
+...
+05:08:04 383 100625 6C69E6DB9623 10-06-25-1E-3D-7C-2D-FC
+05:08:05 384 100732 75A313C51163 10-07-32-1F-6F-C4-56-B1-28
+05:08:05 385 100517 496DD525FD88 10-05-17-18-9C-F1-F6
+05:08:05 386 100713 5AA28AC761CC 10-07-13-1F-EE-D7-6B-EA-48
+05:08:05 387 100625 6C69E6DB9623 10-06-25-1E-3D-7C-2D-FC
+05:08:05 388 100732 75A313C51163 10-07-32-1F-6F-C4-56-B1-28
+05:08:06 389 12022C F26C5DF3D629 12-02-2C-01-07-11-06-2B-14-DF-EB-31-FA-CE-D6-36-F3-D6-6E-0B-76-01-D2
+```
+
+ - Will show all BLE devices found including the hex representation of the GAP advertisement packet. Scan responses are not processed.
+ - No images are updated in this mode.
+ - Used for testing BLE adapter.
+
+
+#### Scan for specific DigiBall 
 
 **DigiBallScanner.exe 6EE780**
 
 ```
+...
 MAC: 6EE780, Shot Number: 3, Seconds: 9, Angle: 61, Tip Percent: 23
 MAC: 6EE780, Shot Number: 3, Seconds: 9, Angle: 61, Tip Percent: 23
 MAC: 6EE780, Shot Number: 3, Seconds: 9, Angle: 61, Tip Percent: 23
@@ -63,6 +86,7 @@ MAC: 6EE780, Shot Number: 4, Seconds: 0, Angle: -60, Tip Percent: 11
 
  - Least 3 significant bytes of the MAC address were given as the only argument. This can be easily accomplished by appending to the shortcut target.
  - Images will be updated in the installation folder. By default this is in C:\Users\{username}\AppData\Local\Programs\DigiBallScanner
+ - Additionally, the argument "carom" can be added to the command line to adjust the math for a carom ball of diameter 61.5mm.
 
 #### List of images generated (see DigiBallScanner/example folder)
  - digiball_tipOutline.png
@@ -71,4 +95,10 @@ MAC: 6EE780, Shot Number: 4, Seconds: 0, Angle: -60, Tip Percent: 11
  - digiball_tipOutlineGrid.png
  - digiball_tipOutlineGridContact.png 
  - digiball_tipOutlineGridContactAngle.png
+ - digiball_stats.png
+
+
+### Videos:
+
+https://www.youtube.com/watch?v=FP21fO4wFxw&list=PLkjwxZDtCvmhSuGhGhC9gms-NWCeAy0Ar&pp=gAQBiAQB
 
