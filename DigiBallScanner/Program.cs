@@ -16,6 +16,7 @@ using Windows.Devices.Enumeration;
 using DigiBallScanner.Properties;
 using Windows.Devices.Printers;
 using Windows.Globalization;
+using System.Diagnostics;
 
 
 public static class Program
@@ -345,75 +346,90 @@ public static class Program
         BluetoothLEAdvertisementWatcher watcher,
         BluetoothLEAdvertisementReceivedEventArgs eventArgs)
     {
-        var device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
-        String timeStamp = DateTime.Now.ToString("hh:mm:ss");
-        
-        if (device != null)
+        try
         {
-            recvCount++;
-            var manufacturerSections = eventArgs.Advertisement.ManufacturerData;        
-            if (manufacturerSections.Count > 0)
+
+            var device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
+            String timeStamp = DateTime.Now.ToString("hh:mm:ss");
+
+            if (device != null)
             {
-                // Only print the first one of the list
-                var manufacturerData = manufacturerSections[0];
-                var data = new byte[manufacturerData.Data.Length];
-                using (var reader = DataReader.FromBuffer(manufacturerData.Data))
+                recvCount++;
+                var manufacturerSections = eventArgs.Advertisement.ManufacturerData;
+                if (manufacturerSections.Count > 0)
                 {
-                    reader.ReadBytes(data);
-                }
-                
-                String shortMac = BitConverter.ToString(data).Replace("-", string.Empty).Substring(0, 6);
-                
-                String manufacturerConsoleString = string.Format("{0} {1} {2} {3:X} {4}",
-                    timeStamp,
-                    recvCount,
-                    shortMac,
-                    device.BluetoothAddress,
-                    BitConverter.ToString(data));
+                    // Only print the first one of the list
+                    var manufacturerData = manufacturerSections[0];
+                    var data = new byte[manufacturerData.Data.Length];
+                    using (var reader = DataReader.FromBuffer(manufacturerData.Data))
+                    {
+                        reader.ReadBytes(data);
+                    }
 
-                if (identifyScan)
-                {
-                    Console.WriteLine(manufacturerConsoleString);
-                }
-                else if (filterShortMac==shortMac)
-                {
-                    if (data.Length == 24) {
-                        int deviceType = data[3];
-                        if (deviceType == 1)
+                    String shortMac = BitConverter.ToString(data).Replace("-", string.Empty).Substring(0, 6);
+
+                    String manufacturerConsoleString = string.Format("{0} {1} {2} {3:X} {4}",
+                        timeStamp,
+                        recvCount,
+                        shortMac,
+                        device.BluetoothAddress,
+                        BitConverter.ToString(data));
+
+                    if (identifyScan)
+                    {
+                        Console.WriteLine(manufacturerConsoleString);
+                    }
+                    else if (filterShortMac == shortMac)
+                    {
+                        if (data.Length == 24)
                         {
-                            bool dataReady = (data[17] >> 6) == 1;
-                            int shotNumber = data[6] & 0x3F;
-                            bool highGAccelAvailable = (data[7] >> 4)==1;
-                            int secondsMotionless = (data[7] & 0x03) * 256 + data[8];
-                            int tipPercent = highGAccelAvailable ? data[11] : 0;
-                            tipPercent = (int)Math.Round(Convert.ToDouble(tipPercent) * tipPercentMultiplier);
-                            if (tipPercent > 60) tipPercent = 60;
-                            int spinHorzDPS = BitConverter.ToInt16(new byte[] { data[14], data[13] }, 0);
-                            int spinVertDPS = BitConverter.ToInt16(new byte[] { data[16], data[15] }, 0);
+                            int deviceType = data[3];
+                            if (deviceType == 1)
+                            {
+                                bool dataReady = (data[17] >> 6) == 1;
+                                int shotNumber = data[6] & 0x3F;
+                                bool highGAccelAvailable = (data[7] >> 4) == 1;
+                                int secondsMotionless = (data[7] & 0x03) * 256 + data[8];
+                                int tipPercent = highGAccelAvailable ? data[11] : 0;
+                                tipPercent = (int)Math.Round(Convert.ToDouble(tipPercent) * tipPercentMultiplier);
+                                if (tipPercent > 60) tipPercent = 60;
+                                int spinHorzDPS = BitConverter.ToInt16(new byte[] { data[14], data[13] }, 0);
+                                int spinVertDPS = BitConverter.ToInt16(new byte[] { data[16], data[15] }, 0);
 
-                            int angle = Convert.ToInt32(180 / Math.PI * Math.Atan2(spinHorzDPS, spinVertDPS));
+                                int angle = Convert.ToInt32(180 / Math.PI * Math.Atan2(spinHorzDPS, spinVertDPS));
 
-                            double spinMagDPS = Math.Sqrt(Math.Pow(spinHorzDPS, 2) + Math.Pow(spinVertDPS, 2));
-                            int rpm = (int)Math.Round(60 / 360.0 * spinMagDPS); 
-                             
+                                double spinMagDPS = Math.Sqrt(Math.Pow(spinHorzDPS, 2) + Math.Pow(spinVertDPS, 2));
+                                int rpm = (int)Math.Round(60 / 360.0 * spinMagDPS);
 
-                            Console.WriteLine("{0} {1}: MAC: {2}, Shot Number: {3}, Seconds: {4}, Angle: {5}, Tip Percent: {6}", 
-                                timeStamp, recvCount, shortMac, shotNumber, secondsMotionless, angle, tipPercent);
-                            
-                            if (dataReady && lastShotNumber!=shotNumber)
-                            {                             
-                                lastShotNumber = shotNumber;                                
-                                drawImage(rpm, angle, tipPercent, false);
+
+                                Console.WriteLine("{0} {1}: MAC: {2}, Shot Number: {3}, Seconds: {4}, Angle: {5}, Tip Percent: {6}",
+                                    timeStamp, recvCount, shortMac, shotNumber, secondsMotionless, angle, tipPercent);
+
+                                if (dataReady && lastShotNumber != shotNumber)
+                                {
+                                    lastShotNumber = shotNumber;
+                                    drawImage(rpm, angle, tipPercent, false);
+                                }
+
+
                             }
-
-
                         }
                     }
+
                 }
-
             }
+        } catch (Exception e)
+        {
+            /**
+            // Get stack trace for the exception with source file information
+            var st = new StackTrace(e, true);
+            // Get the top stack frame
+            var frame = st.GetFrame(0);
+            // Get the line number from the stack frame
+            var line = frame.GetFileLineNumber();
+            Console.WriteLine(e.Message);
+            Console.WriteLine("Line: {0}", line);
+            **/
         }
-
-
     }
 }
