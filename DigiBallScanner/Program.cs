@@ -155,7 +155,7 @@ public static class Program
 
         int ballDiameter = 345; //Size of blank cueball image in pixels, square
         int ballRadius = ballDiameter / 2;
-        int tipRadius = 35;
+        int tipRadius = (int)(Convert.ToDouble(ballDiameter)*0.5*11.8/(57.15*tipPercentMultiplier));
         String clock = degrees2clock(angle);
 
         String stats = "";
