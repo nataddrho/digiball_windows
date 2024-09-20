@@ -151,6 +151,8 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="AppIcon.ico" />
+    <None Include="assets\nothing.png" />
+    <None Include="assets\blank_yellow.png" />
     <None Include="assets\blank.png" />
   </ItemGroup>
   <ItemGroup>

@@ -21,12 +21,14 @@ using System.Diagnostics;
 
 public static class Program
 {   
-    public static String filterShortMac = "";
-    public static int lastShotNumber = -1;
+    public static String[] filterShortMac = {"",""};
+    public static int[] lastShotNumber = { -1, -1 };
+    public static int[] runningShotNumber = { 0, 0 };
     public static bool identifyScan = true;
     public static bool scanAll = false;
     public static int recvCount = 0;
     public static double tipPercentMultiplier = 1.0;
+    public static int players = 0;
 
     static async Task Main(string[] args)
     {      
@@ -38,45 +40,52 @@ public static class Program
 
         int i = 0;
         foreach (string arg in args)
-        {
-            switch (i)
+        {   
+            if (arg == "help" || arg == "-help" || arg == "--help" || arg == "-h")
             {
-                case 0:
-                    if (arg == "help" || arg == "-help" || arg == "--help" || arg == "-h")
-                    {
-                        Console.WriteLine(usage);
-                        return;
-                    }
-                    else if (arg == "all" || arg == "ALL")
-                    {
-                        identifyScan = true;
-                        scanAll = true;
-                    }
-                    else if (arg.Length != 6)
-                    {
-                        Console.WriteLine(usage);
-                        return;
-                    }
-                    else
-                    {
-                        filterShortMac = arg.ToUpper();
-                        identifyScan = false;
-                    }
-                    break;
-
-                case 1:
-                    if (arg == "pool")
-                    {
-                        tipPercentMultiplier = 1.0;
-                    }
-                    else if (arg == "carom")
-                    {
-                        Console.WriteLine("Carom ball diameter used.");
-                        tipPercentMultiplier = 61.5 / 57.15; //mm
-                    }
-                    break;
+                Console.WriteLine(usage);
+                return;
             }
-            i++;
+            else if (arg == "all" || arg == "ALL")
+            {
+                identifyScan = true;
+                scanAll = true;
+                break;
+            }
+            else if (arg == "pool")
+            {
+                tipPercentMultiplier = 1.0;
+            }
+            else if (arg == "snooker")
+            {
+                Console.WriteLine("Snooker ball diameter used.");
+                tipPercentMultiplier = 52.5 / 57.15; //mm
+            }
+            else if (arg == "carom")
+            {
+                Console.WriteLine("Carom ball diameter used.");
+                tipPercentMultiplier = 61.5 / 57.15; //mm
+            }
+            else if (arg.Length != 6)
+            {
+                Console.WriteLine(usage);
+                return;
+            }
+            else
+            {
+                if (players > 2)
+                {
+                    Console.WriteLine("Maximum of two devices are allowed.");
+                    Console.WriteLine(usage);
+                    return;
+                }
+                else
+                {
+                    filterShortMac[players] = arg.ToUpper();
+                    identifyScan = false;
+                    players++;
+                }
+            }          
         }
 
         if (identifyScan) {
@@ -91,7 +100,10 @@ public static class Program
             }
         } else
         {
-            Console.WriteLine(String.Format("Scanning for DigiBall with MAC address {0}...", filterShortMac));
+            for (i = 0; i < players; i++)
+            {
+                Console.WriteLine(String.Format("Device {0}, scanning for DigiBall with MAC address {1}...", i+1, filterShortMac[i]));
+            }
         }
 
         var watcher = new BluetoothLEAdvertisementWatcher();
@@ -150,7 +162,7 @@ public static class Program
         return s;
     }
 
-    private static void drawImage(int rpm, int angle, int tipPercent, bool showDeviation)
+    private static void drawImage(int player, int shotNumber, int rpm, int angle, int tipPercent, bool showDeviation)
     {
         //Update cueball picture
 
@@ -174,7 +186,7 @@ public static class Program
 
         int TipPercentFives = (int)(Math.Round((Convert.ToDouble(tipPercent) / 5)) * 5); //Multiple of 5
 
-        stats = String.Format("{0}{1} rpm\n{2}\n{3} pfc", stats, rpm, clock, TipPercentFives);
+        stats = String.Format("Shot {0}\n{1}{2} rpm\n{3}\n{4} pfc", shotNumber, stats, rpm, clock, TipPercentFives);
 
         double ax = Math.Sin(Math.PI / 180 * angle);
         double ay = -Math.Cos(Math.PI / 180 * angle);
@@ -216,9 +228,18 @@ public static class Program
 
         for (int j = 0; j < 2; j++)
         {
-            
+
             //Bitmap image = new Bitmap(cueball);
-            Bitmap cueballImage = new Bitmap(Resources.blank); //Create from resource
+            Bitmap backgroundImage;
+            if (player==2)
+            {
+                backgroundImage = Resources.blank_yellow;
+            } else
+            {
+                backgroundImage = Resources.blank;
+            }
+
+            Bitmap cueballImage = new Bitmap(backgroundImage); //Create from resource            
 
             // Create a graphics object from the image
             Graphics graphics = Graphics.FromImage(cueballImage);
@@ -244,7 +265,7 @@ public static class Program
             // Save the image to a file
             if (j == 0)
             {
-                cueballImage.Save("digiball_tipOutline.png");
+                cueballImage.Save(String.Format("digiball{0}_tipOutline.png",player));
             }
 
             //Grid
@@ -265,7 +286,7 @@ public static class Program
                 graphics.DrawLine(pen, ballRadius * (1 + b), ballRadius * (1 - a), ballRadius * (1 - b), ballRadius * (1 + a));
 
                 // Save the image to a file       
-                cueballImage.Save("digiball_tipOutlineGrid.png");
+                cueballImage.Save(String.Format("digiball{0}_tipOutlineGrid.png",player));
             }
 
             //Tip contact point        
@@ -289,10 +310,10 @@ public static class Program
             // Save the image to a file
             if (j == 0)
             {
-                cueballImage.Save("digiball_tipOutlineContact.png");
+                cueballImage.Save(String.Format("digiball{0}_tipOutlineContact.png",player));
             } else
             {
-                cueballImage.Save("digiball_tipOutlineGridContact.png");
+                cueballImage.Save(String.Format("digiball{0}_tipOutlineGridContact.png",player));
             }
 
             //Guide
@@ -308,10 +329,10 @@ public static class Program
             // Save the image to a file
             if (j == 0)
             {
-                cueballImage.Save("digiball_tipOutlineContactAngle.png");
+                cueballImage.Save(String.Format("digiball{0}_tipOutlineContactAngle.png",player));
             } else
             {
-                cueballImage.Save("digiball_tipOutlineGridContactAngle.png");
+                cueballImage.Save(String.Format("digiball{0}_tipOutlineGridContactAngle.png",player));
             }
 
             // Dispose of the graphics object and image
@@ -331,10 +352,10 @@ public static class Program
             graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
             graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
             graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-            graphics.DrawString(stats, new Font("Tahoma", 48), Brushes.Black, rectF2);
-            graphics.DrawString(stats, new Font("Tahoma", 48), Brushes.White, rectF1);
+            graphics.DrawString(stats, new Font("Tahoma", 42), Brushes.Black, rectF2);
+            graphics.DrawString(stats, new Font("Tahoma", 42), Brushes.White, rectF1);
 
-            statsImage.Save("digiball_stats.png");
+            statsImage.Save(String.Format("digiball{0}_stats.png",player));
 
             // Dispose of the graphics object and image
             graphics.Dispose();
@@ -379,39 +400,57 @@ public static class Program
                     {
                         Console.WriteLine(manufacturerConsoleString);
                     }
-                    else if (filterShortMac == shortMac)
+                    else
                     {
-                        if (data.Length == 24)
+                        int player = 0;
+                        if (filterShortMac[0] == shortMac)
                         {
-                            int deviceType = data[3];
-                            if (deviceType == 1)
+                            player = 1;
+                        } else if (filterShortMac[1] == shortMac)
+                        {
+                            player = 2;
+                        }
+                        if (player > 0)
+                        {
+                            if (data.Length == 24)
                             {
-                                bool dataReady = (data[17] >> 6) == 1;
-                                int shotNumber = data[6] & 0x3F;
-                                bool highGAccelAvailable = (data[7] >> 4) == 1;
-                                int secondsMotionless = (data[7] & 0x03) * 256 + data[8];
-                                int tipPercent = highGAccelAvailable ? data[11] : 0;
-                                tipPercent = (int)Math.Round(Convert.ToDouble(tipPercent) * tipPercentMultiplier);
-                                if (tipPercent > 60) tipPercent = 60;
-                                int spinHorzDPS = BitConverter.ToInt16(new byte[] { data[14], data[13] }, 0);
-                                int spinVertDPS = BitConverter.ToInt16(new byte[] { data[16], data[15] }, 0);
-
-                                int angle = Convert.ToInt32(180 / Math.PI * Math.Atan2(spinHorzDPS, spinVertDPS));
-
-                                double spinMagDPS = Math.Sqrt(Math.Pow(spinHorzDPS, 2) + Math.Pow(spinVertDPS, 2));
-                                int rpm = (int)Math.Round(60 / 360.0 * spinMagDPS);
-
-
-                                Console.WriteLine("{0} {1}: MAC: {2}, Shot Number: {3}, Seconds: {4}, Angle: {5}, Tip Percent: {6}",
-                                    timeStamp, recvCount, shortMac, shotNumber, secondsMotionless, angle, tipPercent);
-
-                                if (dataReady && lastShotNumber != shotNumber)
+                                int deviceType = data[3];
+                                if (deviceType == 1)
                                 {
-                                    lastShotNumber = shotNumber;
-                                    drawImage(rpm, angle, tipPercent, false);
+                                    bool dataReady = (data[17] >> 6) == 1;
+                                    int shotNumber = data[6] & 0x3F;
+                                    bool highGAccelAvailable = (data[7] >> 4) == 1;
+                                    int secondsMotionless = (data[7] & 0x03) * 256 + data[8];
+                                    int tipPercent = highGAccelAvailable ? data[11] : 0;
+                                    tipPercent = (int)Math.Round(Convert.ToDouble(tipPercent) * tipPercentMultiplier);
+                                    if (tipPercent > 60) tipPercent = 60;
+                                    int spinHorzDPS = BitConverter.ToInt16(new byte[] { data[14], data[13] }, 0);
+                                    int spinVertDPS = BitConverter.ToInt16(new byte[] { data[16], data[15] }, 0);
+
+                                    int angle = Convert.ToInt32(180 / Math.PI * Math.Atan2(spinHorzDPS, spinVertDPS));
+
+                                    double spinMagDPS = Math.Sqrt(Math.Pow(spinHorzDPS, 2) + Math.Pow(spinVertDPS, 2));
+                                    int rpm = (int)Math.Round(60 / 360.0 * spinMagDPS);
+
+                                    String ply = "";
+                                    if (players>1)
+                                    {
+                                        ply = String.Format("Player{0}", player);
+                                    }
+
+
+                                    Console.WriteLine("{0} {1} {2}: MAC: {3}, Shot Number: {4}, Seconds: {5}, Angle: {6}, Tip Percent: {7}",
+                                        timeStamp, recvCount, ply, shortMac, shotNumber, secondsMotionless, angle, tipPercent);
+
+                                    if (dataReady && lastShotNumber[player-1] != shotNumber)
+                                    {
+                                        lastShotNumber[player-1] = shotNumber;
+                                        runningShotNumber[player - 1]++;
+                                        drawImage(player, runningShotNumber[player-1], rpm, angle, tipPercent, false);
+                                    }
+
+
                                 }
-
-
                             }
                         }
                     }

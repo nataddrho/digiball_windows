@@ -1,7 +1,7 @@
 
 
 # DigiBallScanner
-Windows command-line tool for scanning DigiBall devices with Bluetooth LE, and generating images (.png) of tip contact position and statistics when new shots are detected. The images can be used as overlays for streaming software such as OBS.
+Windows command-line tool for scanning DigiBall devices with Bluetooth LE, and generating images (.png) of tip contact position and statistics when new shots are detected. The images can be used as overlays for streaming software such as OBS. Adding a video delay of 6s (or more) to the main feed will cause the generated graphics to appear slightly before the player shoots. This may be desirable.
 
 ### Requirements:
 
@@ -32,11 +32,12 @@ DigiBall Console for Windows - Generates realtime ball graphics for streaming so
 Output images will be generated in:
 C:\Users\usnrho\AppData\Local\Programs\DigiBallScanner
 
-Usage: DigiBallScanner.exe x y
-x:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.
+Usage: DigiBallScanner.exe x y z
 x=all:   Scans all visible devices
-y=pool:  Uses pool ball diameter (default)
-y=carom: Uses carom ball diameter
+x:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.
+y:       (Optional) Mac Address filter of 2nd player cueball.
+z=pool:  (Optional) Uses pool ball diameter (default)
+z=carom: Uses carom ball diameter
 Scanning for all DigiBall devices only. Images will not be updated until restarted with a MAC address filter...
 ```
 
@@ -62,41 +63,37 @@ Scanning for all DigiBall devices only. Images will not be updated until restart
  - No images are updated in this mode.
  - Used for testing BLE adapter.
 
-
 #### Scan for specific DigiBall 
 
 **DigiBallScanner.exe 6EE780**
 
-```
-...
-MAC: 6EE780, Shot Number: 3, Seconds: 9, Angle: 61, Tip Percent: 23
-MAC: 6EE780, Shot Number: 3, Seconds: 9, Angle: 61, Tip Percent: 23
-MAC: 6EE780, Shot Number: 3, Seconds: 9, Angle: 61, Tip Percent: 23
-MAC: 6EE780, Shot Number: 3, Seconds: 9, Angle: 61, Tip Percent: 23
-MAC: 6EE780, Shot Number: 4, Seconds: 0, Angle: 61, Tip Percent: 23
-MAC: 6EE780, Shot Number: 4, Seconds: 0, Angle: 61, Tip Percent: 23
-MAC: 6EE780, Shot Number: 4, Seconds: 0, Angle: 61, Tip Percent: 23
-MAC: 6EE780, Shot Number: 4, Seconds: 0, Angle: 61, Tip Percent: 23
-MAC: 6EE780, Shot Number: 4, Seconds: 0, Angle: -60, Tip Percent: 11
-MAC: 6EE780, Shot Number: 4, Seconds: 0, Angle: -60, Tip Percent: 11
-MAC: 6EE780, Shot Number: 4, Seconds: 0, Angle: -60, Tip Percent: 11
-MAC: 6EE780, Shot Number: 4, Seconds: 0, Angle: -60, Tip Percent: 11
-
-```
-
  - Least 3 significant bytes of the MAC address were given as the only argument. This can be easily accomplished by appending to the shortcut target.
  - Images will be updated in the installation folder. By default this is in C:\Users\{username}\AppData\Local\Programs\DigiBallScanner
  - Additionally, the argument "carom" can be added to the command line to adjust the math for a carom ball of diameter 61.5mm.
+ 
+ #### Scan for two DigiBalls (two cueballs are usually used for carom games. The second ball will be drawn as yellow)
 
-#### List of images generated (see DigiBallScanner/example folder)
- - digiball_tipOutline.png
- - digiball_tipOutlineContact.png
- - digiball_tipOutlineContactAngle.png
- - digiball_tipOutlineGrid.png
- - digiball_tipOutlineGridContact.png 
- - digiball_tipOutlineGridContactAngle.png
- - digiball_stats.png
+**DigiBallScanner.exe 485FF2 A7E27B carom**
 
+ - Two MAC addresses were given, along with the carom keyword to correct for the ball diameter.
+ - Images will be updated in the installation folder. By default this is in C:\Users\{username}\AppData\Local\Programs\DigiBallScanner
+ - Images for player 1's cue ball start with "digiball1_" and images for player 2's cue ball starts with "digiball2_".
+
+#### List of images generated
+ - digiball1_tipOutline.png
+ - digiball1_tipOutlineContact.png
+ - digiball1_tipOutlineContactAngle.png
+ - digiball1_tipOutlineGrid.png
+ - digiball1_tipOutlineGridContact.png 
+ - digiball1_tipOutlineGridContactAngle.png
+ - digiball1_stats.png
+ - digiball2_tipOutline.png
+ - digiball2_tipOutlineContact.png
+ - digiball2_tipOutlineContactAngle.png
+ - digiball2_tipOutlineGrid.png
+ - digiball2_tipOutlineGridContact.png 
+ - digiball2_tipOutlineGridContactAngle.png
+ - digiball2_stats.png
 
 ### Videos:
 
