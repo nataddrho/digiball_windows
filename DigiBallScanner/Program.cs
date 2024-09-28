@@ -176,11 +176,11 @@ public static class Program
         if (tipPercent>0)
         {            
             double speedEstimationMPH = 0.26775 * Convert.ToDouble(rpm) / Convert.ToDouble(tipPercent);
-            if (speedEstimationMPH < 1) stats = "Soft";
-            else if (speedEstimationMPH < 2) stats = "Slow";
-            else if (speedEstimationMPH < 4) stats = "Medium";
-            else if (speedEstimationMPH < 7) stats = "Fast";
-            else stats = "Hard";
+            if (speedEstimationMPH < 1) stats = "Tap";
+            else if (speedEstimationMPH < 2) stats = "Soft";
+            else if (speedEstimationMPH < 4) stats = "Slow";
+            else if (speedEstimationMPH < 7) stats = "Medium";
+            else stats = "Fast";
             stats += "\n";
         }
 
@@ -195,7 +195,7 @@ public static class Program
         double tipRadiusCurvatureRatio = tipRadiusDime / 1.125;
         double est1 = tipPercent * (1 - tipEstimationError) / 100;
         double est2 = tipPercent * (1 + tipEstimationError) / 100;
-        if (est2 > 0.6) est2 = 0.6;
+        if (est2 > 0.55) est2 = 0.55;
         double r1 = ballRadius * est1;
         double r2 = ballRadius * est2;
         double drawOffset1 = r1 * tipRadiusCurvatureRatio;
@@ -272,18 +272,17 @@ public static class Program
             if (j > 0)
             {
                 pen.Width = 1;
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < 6; i++)
                 {
                     DrawCircle(graphics, pen, ballRadius, ballRadius, (float)(ballRadius * 0.1 * (i + 1)));
                 }
-                float a = (float)(Math.Sqrt(3) / 2)/2;
-                float b = (float)0.5/2;
-                graphics.DrawLine(pen, ballRadius, ballRadius/2, ballRadius, 3*ballRadius/2);
-                graphics.DrawLine(pen, ballRadius / 2, ballRadius, 3 * ballRadius / 2, ballRadius);
-                graphics.DrawLine(pen, ballRadius * (1 + a), ballRadius * (1 + b), ballRadius * (1 - a), ballRadius * (1 - b));
-                graphics.DrawLine(pen, ballRadius * (1 + a), ballRadius * (1 - b), ballRadius * (1 - a), ballRadius * (1 + b));
-                graphics.DrawLine(pen, ballRadius * (1 + b), ballRadius * (1 + a), ballRadius * (1 - b), ballRadius * (1 - a));
-                graphics.DrawLine(pen, ballRadius * (1 + b), ballRadius * (1 - a), ballRadius * (1 - b), ballRadius * (1 + a));
+
+                for (int i = 0; i<6; i++)
+                {
+                    double x = 0.6 * ballRadius * Math.Cos(2 * Math.PI * Convert.ToDouble(i) / 12);
+                    double y = 0.6 * ballRadius * Math.Sin(2 * Math.PI * Convert.ToDouble(i) / 12);
+                    graphics.DrawLine(pen, ballRadius - (int)x, ballRadius - (int)y, ballRadius + (int)x, ballRadius + (int)y);
+                }
 
                 // Save the image to a file       
                 cueballImage.Save(String.Format("digiball{0}_tipOutlineGrid.png",player));
