@@ -1,23 +1,12 @@
-﻿using System;
+﻿//Nathan Rhoades LLC
+
+using System;
 using System.Drawing;
 using System.Threading.Tasks;
-using System.IO;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
-using System.Threading;
 using Windows.Storage.Streams;
-using System.Collections.Generic;
-using Windows.Devices.Sensors;
-using Windows.UI.Xaml.Shapes;
-using static System.Net.Mime.MediaTypeNames;
-using Windows.UI.Xaml.Media.Imaging;
-using Windows.UI;
-using Windows.Devices.Enumeration;
 using DigiBallScanner.Properties;
-using Windows.Devices.Printers;
-using Windows.Globalization;
-using System.Diagnostics;
-
 
 public static class Program
 {   
@@ -29,11 +18,12 @@ public static class Program
     public static int recvCount = 0;
     public static double tipPercentMultiplier = 1.0;
     public static int players = 0;
+    public static bool metric = false;
 
     static async Task Main(string[] args)
     {      
         String appDataPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        String usage = "Usage: DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\ny=pool:  Uses pool ball diameter (default)\ny=carom: Uses carom ball diameter";
+        String usage = "Usage: DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\ny=pool:  Uses pool ball diameter (default)\ny=carom: Uses carom ball diameter\nmetric: Use metric units";
         Console.WriteLine("DigiBall Console for Windows - Generates realtime ball graphics for streaming software.\n");
         Console.WriteLine("Output images will be generated in:");
         Console.WriteLine(string.Format("{0}\n", appDataPath));
@@ -65,6 +55,11 @@ public static class Program
             {
                 Console.WriteLine("Carom ball diameter used.");
                 tipPercentMultiplier = 61.5 / 57.15; //mm
+            }
+            else if (arg == "metric")
+            {
+                Console.WriteLine("Metric units used.");
+                metric = true;
             }
             else if (arg.Length != 6)
             {
@@ -162,7 +157,7 @@ public static class Program
         return s;
     }
 
-    private static void drawImage(int player, int shotNumber, int rpm, int angle, int tipPercent, bool showDeviation)
+    private static void drawImage(int player, int shotNumber, int spinRPM, int angle, int tipPercent, double speedMPH, bool showDeviation)
     {
         //Update cueball picture
 
@@ -173,6 +168,7 @@ public static class Program
 
         String stats = "";
 
+        /*
         if (tipPercent>0)
         {            
             double speedEstimationMPH = 0.26775 * Convert.ToDouble(rpm) / Convert.ToDouble(tipPercent);
@@ -183,10 +179,20 @@ public static class Program
             else stats = "Fast";
             stats += "\n";
         }
+        */        
 
         int TipPercentFives = (int)(Math.Round((Convert.ToDouble(tipPercent) / 5)) * 5); //Multiple of 5
 
-        stats = String.Format("Shot {0}\n{1}{2} rpm\n{3}\n{4} pfc", shotNumber, stats, rpm, clock, TipPercentFives);
+        double convFactor = metric ? 1.60934 : 1.0;
+        double speed = Convert.ToDouble(Math.Round(speedMPH * 2 * convFactor)) / 2; //0.5 precision
+        String speedStr = string.Format("{0:F1}", speed);
+        String unit = metric ? "km/h" : "mph";
+        if (speedMPH>7)
+        {
+            speedStr = String.Format("{0}+", speedStr);  
+        }         
+
+        stats = String.Format("Shot {0}\n{1} {2}\n{3} rpm\n{4}\n{5} pfc", shotNumber, speedStr, unit, spinRPM, clock, TipPercentFives);
 
         double ax = Math.Sin(Math.PI / 180 * angle);
         double ay = -Math.Cos(Math.PI / 180 * angle);
@@ -416,39 +422,34 @@ public static class Program
                                 int deviceType = data[3];
                                 if (deviceType == 1)
                                 {
+                                    String ply = "";
+                                    if (players > 1)
+                                    {
+                                        ply = String.Format("Player{0}", player);
+                                    }
                                     bool dataReady = (data[17] >> 6) == 1;
-                                    int shotNumber = data[6] & 0x3F;
-                                    bool highGAccelAvailable = (data[7] >> 4) == 1;
-                                    int secondsMotionless = (data[7] & 0x03) * 256 + data[8];
-                                    int tipPercent = highGAccelAvailable ? data[11] : 0;
+                                    int shotNumber = data[6] & 0x3F;                                    
+                                    int secondsMotionless = (data[7] & 0x03) * 256 + data[8];                                    
+                                    int tipPercent = data[11];
+                                    int speedFactor = data[12];
                                     tipPercent = (int)Math.Round(Convert.ToDouble(tipPercent) * tipPercentMultiplier);
                                     if (tipPercent > 60) tipPercent = 60;
                                     int spinHorzDPS = BitConverter.ToInt16(new byte[] { data[14], data[13] }, 0);
                                     int spinVertDPS = BitConverter.ToInt16(new byte[] { data[16], data[15] }, 0);
-
                                     int angle = Convert.ToInt32(180 / Math.PI * Math.Atan2(spinHorzDPS, spinVertDPS));
-
                                     double spinMagDPS = Math.Sqrt(Math.Pow(spinHorzDPS, 2) + Math.Pow(spinVertDPS, 2));
-                                    int rpm = (int)Math.Round(60 / 360.0 * spinMagDPS);
+                                    double speedMPH = 0.06 * speedFactor;                                    
+                                    int spinRPM = (int)Math.Round(60 / 360.0 * spinMagDPS);
+                                    
+                                    Console.WriteLine("{0} {1} {2}: MAC: {3}, Shot Number: {4}, Seconds: {5}, Angle(deg): {6}, Tip Percent: {7}, Speed(mph): {8:F1}",
+                                        timeStamp, recvCount, ply, shortMac, shotNumber, secondsMotionless, angle, tipPercent, speedMPH);
 
-                                    String ply = "";
-                                    if (players>1)
+                                    if (dataReady && lastShotNumber[player - 1] != shotNumber)
                                     {
-                                        ply = String.Format("Player{0}", player);
-                                    }
-
-
-                                    Console.WriteLine("{0} {1} {2}: MAC: {3}, Shot Number: {4}, Seconds: {5}, Angle: {6}, Tip Percent: {7}",
-                                        timeStamp, recvCount, ply, shortMac, shotNumber, secondsMotionless, angle, tipPercent);
-
-                                    if (dataReady && lastShotNumber[player-1] != shotNumber)
-                                    {
-                                        lastShotNumber[player-1] = shotNumber;
+                                        lastShotNumber[player - 1] = shotNumber;
                                         runningShotNumber[player - 1]++;
-                                        drawImage(player, runningShotNumber[player-1], rpm, angle, tipPercent, false);
-                                    }
-
-
+                                        drawImage(player, runningShotNumber[player - 1], spinRPM, angle, tipPercent, speedMPH, false);
+                                    }                                                                       
                                 }
                             }
                         }
