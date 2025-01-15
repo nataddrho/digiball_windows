@@ -23,7 +23,7 @@ public static class Program
     static async Task Main(string[] args)
     {      
         String appDataPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        String usage = "Usage: DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\ny=pool:  Uses pool ball diameter (default)\ny=carom: Uses carom ball diameter\nmetric: Use metric units";
+        String usage = "Version 1.1\nUsage: DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\ny=pool:  Uses pool ball diameter (default)\ny=carom: Uses carom ball diameter\nmetric:  Use metric units";
         Console.WriteLine("DigiBall Console for Windows - Generates realtime ball graphics for streaming software.\n");
         Console.WriteLine("Output images will be generated in:");
         Console.WriteLine(string.Format("{0}\n", appDataPath));
@@ -166,20 +166,7 @@ public static class Program
         int tipRadius = (int)(Convert.ToDouble(ballDiameter)*0.5*11.8/(57.15*tipPercentMultiplier));
         String clock = degrees2clock(angle);
 
-        String stats = "";
-
-        /*
-        if (tipPercent>0)
-        {            
-            double speedEstimationMPH = 0.26775 * Convert.ToDouble(rpm) / Convert.ToDouble(tipPercent);
-            if (speedEstimationMPH < 1) stats = "Tap";
-            else if (speedEstimationMPH < 2) stats = "Soft";
-            else if (speedEstimationMPH < 4) stats = "Slow";
-            else if (speedEstimationMPH < 7) stats = "Medium";
-            else stats = "Fast";
-            stats += "\n";
-        }
-        */        
+        String stats = "";      
 
         int TipPercentFives = (int)(Math.Round((Convert.ToDouble(tipPercent) / 5)) * 5); //Multiple of 5
 
@@ -192,7 +179,7 @@ public static class Program
             speedStr = String.Format("{0}+", speedStr);  
         }         
 
-        stats = String.Format("Shot {0}\n{1} {2}\n{3} rpm\n{4}\n{5} pfc", shotNumber, speedStr, unit, spinRPM, clock, TipPercentFives);
+        stats = String.Format("Shot {0}\n{1} {2}\n{3} rps\n{4}\n{5} pfc", shotNumber, speedStr, unit, spinRPM/60, clock, TipPercentFives);
 
         double ax = Math.Sin(Math.PI / 180 * angle);
         double ay = -Math.Cos(Math.PI / 180 * angle);

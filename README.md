@@ -3,6 +3,10 @@
 # DigiBallScanner
 Windows command-line tool for scanning DigiBall devices with Bluetooth LE, and generating images (.png) of tip contact position and statistics when new shots are detected. The images can be used as overlays for streaming software such as OBS. Adding a video delay of 6s (or more) to the main feed will cause the generated graphics to appear slightly before the player shoots. This may be desirable.
 
+### Versions:
+Version 1.0 - Initial Release
+Version 1.1 - Changed RPM to RPS for consistency with iOS/Android/DigiCast app
+
 ### Requirements:
 
 Windows 10, BT 4.0 adapter
@@ -32,12 +36,12 @@ DigiBall Console for Windows - Generates realtime ball graphics for streaming so
 Output images will be generated in:
 C:\Users\usnrho\AppData\Local\Programs\DigiBallScanner
 
-Usage: DigiBallScanner.exe x y z
-x=all:   Scans all visible devices
+Usage: DigiBallScanner.exe x y
 x:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.
-y:       (Optional) Mac Address filter of 2nd player cueball.
-z=pool:  (Optional) Uses pool ball diameter (default)
-z=carom: Uses carom ball diameter
+x=all:   Scans all visible devices
+y=pool:  Uses pool ball diameter (default)
+y=carom: Uses carom ball diameter
+metric:  Optional: Use metric units
 Scanning for all DigiBall devices only. Images will not be updated until restarted with a MAC address filter...
 ```
 
