@@ -15,6 +15,11 @@ Windows 10, BT 4.0 adapter
 
 Download and run the installation file DigiBallScanner/innosetup/Output/DigiBallScannerSetup.exe
 
+### What is Installed:
+
+ - DigiBallScanner shortcut: Runs executable directly.
+ - DigiBallScannerCmdLine shortcut: Opens command prompt in the installation directory.
+
 ### Configuring Bluetooth LE adapter
 
  - Go to Start and type "devmgmt.msc" to open the Device Manager.
@@ -24,7 +29,7 @@ Download and run the installation file DigiBallScanner/innosetup/Output/DigiBall
 
 ### Example of usage:
 
-DigiBallScanner uses command line arguments. For convenience you can add/create Desktop shortcuts with the appropriate arguments.
+DigiBallScanner uses command line arguments. For convenience you can edit the shortcut with the appropriate arguments.
 
 #### Scan for all DigiBall devices 
 
