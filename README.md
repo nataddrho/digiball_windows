@@ -6,6 +6,7 @@ Windows command-line tool for scanning DigiBall devices with Bluetooth LE, and g
 ### Versions:
 Version 1.0 - Initial Release
 Version 1.1 - Changed RPM to RPS for consistency with iOS/Android/DigiCast app
+Version 1.2 - Ball type and color is read directly from ball. Argument no longer needed.
 
 ### Requirements:
 
@@ -44,8 +45,6 @@ C:\Users\usnrho\AppData\Local\Programs\DigiBallScanner
 Usage: DigiBallScanner.exe x y
 x:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.
 x=all:   Scans all visible devices
-y=pool:  Uses pool ball diameter (default)
-y=carom: Uses carom ball diameter
 metric:  Optional: Use metric units
 Scanning for all DigiBall devices only. Images will not be updated until restarted with a MAC address filter...
 ```
@@ -78,11 +77,10 @@ Scanning for all DigiBall devices only. Images will not be updated until restart
 
  - Least 3 significant bytes of the MAC address were given as the only argument. This can be easily accomplished by appending to the shortcut target.
  - Images will be updated in the installation folder. By default this is in C:\Users\{username}\AppData\Local\Programs\DigiBallScanner
- - Additionally, the argument "carom" can be added to the command line to adjust the math for a carom ball of diameter 61.5mm.
- 
- #### Scan for two DigiBalls (two cueballs are usually used for carom games. The second ball will be drawn as yellow)
+  
+ #### Scan for two DigiBalls (two cueballs are usually used for carom games)
 
-**DigiBallScanner.exe 485FF2 A7E27B carom**
+**DigiBallScanner.exe 485FF2 A7E27B**
 
  - Two MAC addresses were given, along with the carom keyword to correct for the ball diameter.
  - Images will be updated in the installation folder. By default this is in C:\Users\{username}\AppData\Local\Programs\DigiBallScanner
