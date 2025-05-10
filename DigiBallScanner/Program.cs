@@ -7,6 +7,7 @@ using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Storage.Streams;
 using DigiBallScanner.Properties;
+using System.Diagnostics.Eventing.Reader;
 
 public static class Program
 {   
@@ -15,15 +16,14 @@ public static class Program
     public static int[] runningShotNumber = { 0, 0 };
     public static bool identifyScan = true;
     public static bool scanAll = false;
-    public static int recvCount = 0;
-    public static double tipPercentMultiplier = 1.0;
+    public static int recvCount = 0;    
     public static int players = 0;
     public static bool metric = false;
 
     static async Task Main(string[] args)
     {      
         String appDataPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        String usage = "Version 1.2\nUsage: DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\ny=pool:  Uses pool ball diameter (default)\ny=carom: Uses carom ball diameter\nmetric:  Use metric units";
+        String usage = "Version 1.2\nUsage: DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\nmetric:  Use metric units";
         Console.WriteLine("DigiBall Console for Windows - Generates realtime ball graphics for streaming software.\n");
         Console.WriteLine("Output images will be generated in:");
         Console.WriteLine(string.Format("{0}\n", appDataPath));
@@ -41,21 +41,7 @@ public static class Program
                 identifyScan = true;
                 scanAll = true;
                 break;
-            }
-            else if (arg == "pool")
-            {
-                tipPercentMultiplier = 1.0;
-            }
-            else if (arg == "snooker")
-            {
-                Console.WriteLine("Snooker ball diameter used.");
-                tipPercentMultiplier = 52.5 / 57.15; //mm
-            }
-            else if (arg == "carom")
-            {
-                Console.WriteLine("Carom ball diameter used.");
-                tipPercentMultiplier = 61.5 / 57.15; //mm
-            }
+            }            
             else if (arg == "metric")
             {
                 Console.WriteLine("Metric units used.");
@@ -157,7 +143,7 @@ public static class Program
         return s;
     }
 
-    private static void drawImage(int player, int shotNumber, int spinRPM, int angle, int tipPercent, double speedMPH, bool showDeviation)
+    private static void drawImage(int player, bool yellow, double tipPercentMultiplier, int shotNumber, int spinRPM, int angle, int tipPercent, double speedMPH, bool showDeviation)
     {
         //Update cueball picture
 
@@ -224,7 +210,7 @@ public static class Program
 
             //Bitmap image = new Bitmap(cueball);
             Bitmap backgroundImage;
-            if (player==2)
+            if (yellow)
             {
                 backgroundImage = Resources.blank_yellow;
             } else
@@ -408,6 +394,42 @@ public static class Program
                             {
                                 int deviceType = data[3]&0xF;
                                 int ballType = (data[3] >> 4) & 0xF;
+                                
+                                double tipPercentMultiplier = 1.0;
+                                bool ballIsYellow = false;
+                                String ballDescription = "pool";
+
+                                switch (ballType)
+                                {
+                                    case 0:
+                                        tipPercentMultiplier = 1.0;
+                                        break;
+                                    case 1:
+                                        tipPercentMultiplier = 2.438 / 2.25;
+                                        ballDescription = "carom";
+                                        break;
+                                    case 2:
+                                        tipPercentMultiplier = 2.438 / 2.25;
+                                        ballDescription = "carom yellow";
+                                        ballIsYellow = true;
+                                        break;
+                                    case 3:
+                                        tipPercentMultiplier = 2.063 / 2.25;
+                                        ballDescription = "snooker";
+                                        break;
+                                    case 4:
+                                        tipPercentMultiplier = 2 / 2.25;
+                                        ballDescription = "english";
+                                        break;
+                                    case 5:
+                                        tipPercentMultiplier = 2.668 / 2.25;
+                                        ballDescription = "russian";
+                                        break;
+                                    default:
+                                        tipPercentMultiplier = 1.0;
+                                        break;
+                                }
+                                                       
 
                                 if (deviceType == 1)
                                 {
@@ -430,14 +452,14 @@ public static class Program
                                     double speedMPH = 0.06 * speedFactor;                                    
                                     int spinRPM = (int)Math.Round(60 / 360.0 * spinMagDPS);
                                     
-                                    Console.WriteLine("{0} {1} {2}: MAC: {3}, Shot Number: {4}, Seconds: {5}, Angle(deg): {6}, Tip Percent: {7}, Speed(mph): {8:F1}",
-                                        timeStamp, recvCount, ply, shortMac, shotNumber, secondsMotionless, angle, tipPercent, speedMPH);
+                                    Console.WriteLine("{0} {1} {2}: ({3}) MAC: {4}, Shot Number: {5}, Seconds: {6}, Angle(deg): {7}, Tip Percent: {8}, Speed(mph): {9:F1}",
+                                        timeStamp, recvCount, ply, ballDescription, shortMac, shotNumber, secondsMotionless, angle, tipPercent, speedMPH);
 
                                     if (dataReady && lastShotNumber[player - 1] != shotNumber)
                                     {
                                         lastShotNumber[player - 1] = shotNumber;
                                         runningShotNumber[player - 1]++;
-                                        drawImage(player, runningShotNumber[player - 1], spinRPM, angle, tipPercent, speedMPH, false);
+                                        drawImage(player, ballIsYellow, tipPercentMultiplier, runningShotNumber[player - 1], spinRPM, angle, tipPercent, speedMPH, false);
                                     }                                                                       
                                 }
                             }
