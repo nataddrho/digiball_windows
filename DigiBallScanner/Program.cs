@@ -23,7 +23,7 @@ public static class Program
     static async Task Main(string[] args)
     {      
         String appDataPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        String usage = "Version 1.1\nUsage: DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\ny=pool:  Uses pool ball diameter (default)\ny=carom: Uses carom ball diameter\nmetric:  Use metric units";
+        String usage = "Version 1.2\nUsage: DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\ny=pool:  Uses pool ball diameter (default)\ny=carom: Uses carom ball diameter\nmetric:  Use metric units";
         Console.WriteLine("DigiBall Console for Windows - Generates realtime ball graphics for streaming software.\n");
         Console.WriteLine("Output images will be generated in:");
         Console.WriteLine(string.Format("{0}\n", appDataPath));
@@ -406,7 +406,9 @@ public static class Program
                         {
                             if (data.Length == 24)
                             {
-                                int deviceType = data[3];
+                                int deviceType = data[3]&0xF;
+                                int ballType = (data[3] >> 4) & 0xF;
+
                                 if (deviceType == 1)
                                 {
                                     String ply = "";

@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "DigiBallScanner"
-#define MyAppVersion "1.1"
+#define MyAppVersion "1.2"
 #define MyAppPublisher "Nathan Rhoades LLC"
 #define MyAppURL "https://www.digicue.net"
 #define MyAppExeName "DigiBallScanner.exe"
