@@ -43,6 +43,14 @@ class BLEWriterUnpaired
                         int deviceType = data[3] & 0xF;
                         if (deviceType == 1)
                         {
+                            
+                            int chargeStatus = (data[7] >> 6) & 3;
+                            String[] chargeStatusDesc = { "", "(charging)", "(charging error)", "(full charge)" };
+                            bool shipMode = ((data[7] >> 5) & 1)==1;
+                            String chargeMode = "(ship-mode)";
+                            if (!shipMode) {
+                                chargeMode = chargeStatusDesc[chargeStatus];
+                            }
                             int ballType = (data[3] >> 4) & 0xF;
                             String[] ballTypeDesc = { "pool", "carom", "carom-yellow", "snooker", "english", "russian" };
                             String ballDesc = "unknown";
@@ -51,8 +59,8 @@ class BLEWriterUnpaired
                                 ballDesc = ballTypeDesc[ballType];
                             }
                             String timeStamp = DateTime.Now.ToString("hh:mm:ss");
-                            String manufConsoleString = string.Format("{0} {1} {2} {3}",
-                                timeStamp, shortMac, ballType, ballDesc);
+                            String manufConsoleString = string.Format("{0} {1} {2} {3} {4}",
+                                timeStamp, shortMac, ballType, ballDesc, chargeMode);
                             Console.WriteLine(manufConsoleString);
                         }
                     }
@@ -144,7 +152,7 @@ public static class Program
     static async Task Main(string[] args)
     {      
         String appDataPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        String usage = "Version 1.3\nUsage: DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\nmetric:  Use metric units";
+        String usage = "Version 1.3\nUsage:   DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\nmetric:  Use metric units";
         Console.WriteLine("DigiBall Console for Windows - Generates realtime ball graphics for streaming software.\n");
         Console.WriteLine("Output images will be generated in:");
         Console.WriteLine(string.Format("{0}\n", appDataPath));

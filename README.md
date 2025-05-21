@@ -7,6 +7,7 @@ Windows command-line tool for scanning DigiBall devices with Bluetooth LE, and g
  - Version 1.0 - Initial Release
  - Version 1.1 - Changed RPM to RPS for consistency with iOS/Android/DigiCast app
  - Version 1.2 - Ball type and color is read directly from ball. Argument no longer needed.
+ - Version 1.3 - Added hidden arguments for changing ball type, factory usage only.
 
 ### Requirements:
 
@@ -43,7 +44,8 @@ Output images will be generated in:
 C:\Users\usnrho\AppData\Local\Programs\DigiBallScanner
 
 Usage: DigiBallScanner.exe x y
-x:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.
+x:       MAC Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.
+y:       Optional second MAC address for second player's ball.
 x=all:   Scans all visible devices
 metric:  Optional: Use metric units
 Scanning for all DigiBall devices only. Images will not be updated until restarted with a MAC address filter...
