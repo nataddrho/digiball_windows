@@ -1,29 +1,150 @@
 ﻿//Nathan Rhoades LLC
 
 using System;
+using System.Linq;
 using System.Drawing;
 using System.Threading.Tasks;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
+using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Storage.Streams;
 using DigiBallScanner.Properties;
-using System.Diagnostics.Eventing.Reader;
+
+
+//BLE Writer is for factory usage purposes of setting the ball type. Not needed for consumer usage.
+class BLEWriterUnpaired
+{
+    private BluetoothLEAdvertisementWatcher watcher;
+    private ulong targetBluetoothAddress;
+    private TaskCompletionSource<ulong> foundDeviceTcs;
+
+    public async Task WriteToUnpairedDeviceAsync(string targetName, Guid serviceUuid, Guid characteristicUuid, byte[] value)
+    {
+        foundDeviceTcs = new TaskCompletionSource<ulong>();
+        watcher = new BluetoothLEAdvertisementWatcher
+        {
+            ScanningMode = BluetoothLEScanningMode.Active
+        };
+
+        watcher.Received += (w, btAdv) =>
+        {                        
+            foreach (var manufData in btAdv.Advertisement.ManufacturerData)
+            {
+                if (manufData.CompanyId == 0x03DE) //Nathan Rhoades LLC
+                {
+                    var data = new byte[manufData.Data.Length];
+                    using (var reader = DataReader.FromBuffer(manufData.Data))
+                    {
+                        reader.ReadBytes(data);
+                    }
+                    String shortMac = BitConverter.ToString(data).Replace("-", string.Empty).Substring(0, 6);
+                    if (data.Length == 24)
+                    {
+                        int deviceType = data[3] & 0xF;
+                        if (deviceType == 1)
+                        {
+                            int ballType = (data[3] >> 4) & 0xF;
+                            String[] ballTypeDesc = { "pool", "carom", "carom-yellow", "snooker", "english", "russian" };
+                            String ballDesc = "unknown";
+                            if (ballType < ballTypeDesc.Length)
+                            {
+                                ballDesc = ballTypeDesc[ballType];
+                            }
+                            String timeStamp = DateTime.Now.ToString("hh:mm:ss");
+                            String manufConsoleString = string.Format("{0} {1} {2} {3}",
+                                timeStamp, shortMac, ballType, ballDesc);
+                            Console.WriteLine(manufConsoleString);
+                        }
+                    }
+                }
+            }            
+
+            var localName = btAdv.Advertisement.LocalName;
+            if (!string.IsNullOrEmpty(localName) && localName.Equals(targetName, StringComparison.OrdinalIgnoreCase))
+            {
+                targetBluetoothAddress = btAdv.BluetoothAddress;
+                foundDeviceTcs.TrySetResult(targetBluetoothAddress);
+                watcher.Stop();
+            }
+        };
+                
+        watcher.Start();
+
+        var timeout = Task.Delay(10000); // 10s timeout
+        var completedTask = await Task.WhenAny(foundDeviceTcs.Task, timeout);
+        if (completedTask == timeout)
+        {            
+            return;
+        }
+
+        ulong address = await foundDeviceTcs.Task;
+        var bleDevice = await BluetoothLEDevice.FromBluetoothAddressAsync(address);
+        if (bleDevice == null)
+        {
+            Console.WriteLine("Failed to connect to BLE device.");
+            return;
+        }
+
+        var servicesResult = await bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached);
+        if (servicesResult.Status != GattCommunicationStatus.Success)
+        {
+            Console.WriteLine("Failed to get GATT services.");
+            return;
+        }
+
+        var service = servicesResult.Services.FirstOrDefault(s => s.Uuid == serviceUuid);
+        if (service == null)
+        {
+            Console.WriteLine("Service not found.");
+            return;
+        }
+
+        var characteristicsResult = await service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
+        if (characteristicsResult.Status != GattCommunicationStatus.Success)
+        {
+            Console.WriteLine("Failed to get GATT characteristics.");
+            return;
+        }
+
+        var characteristic = characteristicsResult.Characteristics.FirstOrDefault(c => c.Uuid == characteristicUuid);
+        if (characteristic == null)
+        {
+            Console.WriteLine("Characteristic not found.");
+            return;
+        }
+
+        var writer = new DataWriter();
+        writer.WriteBytes(value);
+
+        var status = await characteristic.WriteValueAsync(writer.DetachBuffer(), GattWriteOption.WriteWithResponse);
+        if (status == GattCommunicationStatus.Success)
+        {
+            Console.WriteLine("Update successful!");
+        }
+        else
+        {
+            Console.WriteLine("Write failed with status: " + status);
+        }
+    }
+}
 
 public static class Program
 {   
     public static String[] filterShortMac = {"",""};
     public static int[] lastShotNumber = { -1, -1 };
     public static int[] runningShotNumber = { 0, 0 };
-    public static bool identifyScan = true;
+    public static bool identifyScan = true;    
+    public static byte connectAndConfigureByte = 0;
     public static bool scanAll = false;
     public static int recvCount = 0;    
     public static int players = 0;
     public static bool metric = false;
+    public static String ballTypeArgDesc = "unknown";
 
     static async Task Main(string[] args)
     {      
         String appDataPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        String usage = "Version 1.2\nUsage: DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\nmetric:  Use metric units";
+        String usage = "Version 1.3\nUsage: DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\nmetric:  Use metric units";
         Console.WriteLine("DigiBall Console for Windows - Generates realtime ball graphics for streaming software.\n");
         Console.WriteLine("Output images will be generated in:");
         Console.WriteLine(string.Format("{0}\n", appDataPath));
@@ -35,6 +156,42 @@ public static class Program
             {
                 Console.WriteLine(usage);
                 return;
+            }           
+            else if (arg == "--change-to-pool") //Hidden argument option
+            {
+                connectAndConfigureByte = 0xB0;
+                ballTypeArgDesc = "pool";
+                break;
+            }
+            else if (arg == "--change-to-carom") //Hidden argument option
+            {
+                connectAndConfigureByte = 0xB1;
+                ballTypeArgDesc = "carom";
+                break;
+            }
+            else if (arg == "--change-to-carom-yellow") //Hidden argument option
+            {
+                connectAndConfigureByte = 0xB2;
+                ballTypeArgDesc = "carom-yellow";
+                break;
+            }
+            else if (arg == "--change-to-snooker") //Hidden argument option
+            {
+                connectAndConfigureByte = 0xB3;
+                ballTypeArgDesc = "snooker";
+                break;
+            }
+            else if (arg == "--change-to-english") //Hidden argument option
+            {
+                connectAndConfigureByte = 0xB4;
+                ballTypeArgDesc = "english";
+                break;
+            }
+            else if (arg == "--change-to-russian") //Hidden argument option
+            {
+                connectAndConfigureByte = 0xB5;
+                ballTypeArgDesc = "russian";
+                break;
             }
             else if (arg == "all" || arg == "ALL")
             {
@@ -69,42 +226,67 @@ public static class Program
             }          
         }
 
-        if (identifyScan) {
-            Console.WriteLine(usage);
-            if (scanAll)
+        // For factory usage only
+        if (connectAndConfigureByte>0)
+        {
+            var bleWriter = new BLEWriterUnpaired();
+
+            //DigiBall configuration identifiers
+            Guid serviceUuid = Guid.Parse("00001523-1812-efde-1523-785feabcd123");
+            Guid characteristicUuid = Guid.Parse("00001525-1812-efde-1523-785feabcd123");
+
+            byte[] valueToWrite = new byte[] { connectAndConfigureByte };
+
+            Console.WriteLine(String.Format("Scanning for all DigiBalls and will change ball type to {0} when connectable...", ballTypeArgDesc));
+
+            while (1 == 1)
             {
-                Console.WriteLine("Scanning for all visible BLE devices. Images will not be updated until restarted with a MAC address filter...");
+                await bleWriter.WriteToUnpairedDeviceAsync("DigiBall", serviceUuid, characteristicUuid, valueToWrite);
+            }
+
+        }
+        else
+        {
+            if (identifyScan)
+            {
+                Console.WriteLine(usage);
+                if (scanAll)
+                {
+                    Console.WriteLine("Scanning for all visible BLE devices. Images will not be updated until restarted with a MAC address filter...");
+                }
+                else
+                {
+                    Console.WriteLine("Scanning for all DigiBall devices only. Images will not be updated until restarted with a MAC address filter...");
+                }
             }
             else
             {
-                Console.WriteLine("Scanning for all DigiBall devices only. Images will not be updated until restarted with a MAC address filter...");
+                for (i = 0; i < players; i++)
+                {
+                    Console.WriteLine(String.Format("Device {0}, scanning for DigiBall with MAC address {1}...", i + 1, filterShortMac[i]));
+                }
             }
-        } else
-        {
-            for (i = 0; i < players; i++)
+
+            var watcher = new BluetoothLEAdvertisementWatcher();
+            watcher = new BluetoothLEAdvertisementWatcher()
             {
-                Console.WriteLine(String.Format("Device {0}, scanning for DigiBall with MAC address {1}...", i+1, filterShortMac[i]));
+                ScanningMode = BluetoothLEScanningMode.Passive
+            };
+
+            var manufacturerData = new BluetoothLEManufacturerData();
+            manufacturerData.CompanyId = 0x03DE; //Nathan Rhoades LLC       
+            if (!scanAll)
+            {
+                watcher.AdvertisementFilter.Advertisement.ManufacturerData.Add(manufacturerData);
             }
-        }
 
-        var watcher = new BluetoothLEAdvertisementWatcher();
-        watcher = new BluetoothLEAdvertisementWatcher()
-        {
-            ScanningMode = BluetoothLEScanningMode.Passive
-        };
-
-        var manufacturerData = new BluetoothLEManufacturerData();
-        manufacturerData.CompanyId = 0x03DE; //Nathan Rhoades LLC       
-        if (!scanAll)
-        {
-            watcher.AdvertisementFilter.Advertisement.ManufacturerData.Add(manufacturerData);
-        }
-
-        watcher.Received += Watcher_Received;
-        //Scan and restart every 5 seconds
-        while (1 == 1) {
-            watcher.Start();
-            await Task.Delay(5000);
+            watcher.Received += Watcher_Received;
+            //Scan and restart every 5 seconds
+            while (1 == 1)
+            {
+                watcher.Start();
+                await Task.Delay(5000);
+            }
         }
     }
 
