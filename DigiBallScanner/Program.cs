@@ -10,6 +10,49 @@ using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Storage.Streams;
 using DigiBallScanner.Properties;
 
+public class ConsoleWriter
+{
+    public void writeManufDataInfo(BluetoothLEManufacturerData manufData)
+    {
+        if (manufData.CompanyId == 0x03DE) //Nathan Rhoades LLC
+        {
+            var data = new byte[manufData.Data.Length];
+            using (var reader = DataReader.FromBuffer(manufData.Data))
+            {
+                reader.ReadBytes(data);
+            }
+            String shortMac = BitConverter.ToString(data).Replace("-", string.Empty).Substring(0, 6);
+            if (data.Length == 24)
+            {
+                int deviceType = data[3] & 0xF;
+                if (deviceType == 1)
+                {
+
+                    int chargeStatus = (data[7] >> 6) & 3;
+                    String[] chargeStatusDesc = { "", "(charging)", "(charging error)", "(full charge)" };
+                    bool shipMode = ((data[7] >> 5) & 1) == 1;
+                    String chargeMode = "(ship-mode)";
+                    if (!shipMode)
+                    {
+                        chargeMode = chargeStatusDesc[chargeStatus];
+                    }
+                    int ballType = (data[3] >> 4) & 0xF;
+                    String[] ballTypeDesc = { "pool", "carom", "carom-yellow", "snooker", "english", "russian" };
+                    String ballDesc = "unknown";
+                    if (ballType < ballTypeDesc.Length)
+                    {
+                        ballDesc = ballTypeDesc[ballType];
+                    }
+                    String timeStamp = DateTime.Now.ToString("hh:mm:ss");
+                    String manufConsoleString = string.Format("{0} {1} {2} {3}",
+                        timeStamp, shortMac, ballDesc, chargeMode);
+                    Console.WriteLine(manufConsoleString);
+                }
+            }
+        }
+    }
+}
+
 
 //BLE Writer is for factory usage purposes of setting the ball type. Not needed for consumer usage.
 class BLEWriterUnpaired
@@ -17,6 +60,7 @@ class BLEWriterUnpaired
     private BluetoothLEAdvertisementWatcher watcher;
     private ulong targetBluetoothAddress;
     private TaskCompletionSource<ulong> foundDeviceTcs;
+    private ConsoleWriter consoleWriter = new ConsoleWriter();
 
     public async Task WriteToUnpairedDeviceAsync(string targetName, Guid serviceUuid, Guid characteristicUuid, byte[] value)
     {
@@ -30,41 +74,7 @@ class BLEWriterUnpaired
         {                        
             foreach (var manufData in btAdv.Advertisement.ManufacturerData)
             {
-                if (manufData.CompanyId == 0x03DE) //Nathan Rhoades LLC
-                {
-                    var data = new byte[manufData.Data.Length];
-                    using (var reader = DataReader.FromBuffer(manufData.Data))
-                    {
-                        reader.ReadBytes(data);
-                    }
-                    String shortMac = BitConverter.ToString(data).Replace("-", string.Empty).Substring(0, 6);
-                    if (data.Length == 24)
-                    {
-                        int deviceType = data[3] & 0xF;
-                        if (deviceType == 1)
-                        {
-                            
-                            int chargeStatus = (data[7] >> 6) & 3;
-                            String[] chargeStatusDesc = { "", "(charging)", "(charging error)", "(full charge)" };
-                            bool shipMode = ((data[7] >> 5) & 1)==1;
-                            String chargeMode = "(ship-mode)";
-                            if (!shipMode) {
-                                chargeMode = chargeStatusDesc[chargeStatus];
-                            }
-                            int ballType = (data[3] >> 4) & 0xF;
-                            String[] ballTypeDesc = { "pool", "carom", "carom-yellow", "snooker", "english", "russian" };
-                            String ballDesc = "unknown";
-                            if (ballType < ballTypeDesc.Length)
-                            {
-                                ballDesc = ballTypeDesc[ballType];
-                            }
-                            String timeStamp = DateTime.Now.ToString("hh:mm:ss");
-                            String manufConsoleString = string.Format("{0} {1} {2} {3} {4}",
-                                timeStamp, shortMac, ballType, ballDesc, chargeMode);
-                            Console.WriteLine(manufConsoleString);
-                        }
-                    }
-                }
+                consoleWriter.writeManufDataInfo(manufData);
             }            
 
             var localName = btAdv.Advertisement.LocalName;
@@ -137,7 +147,8 @@ class BLEWriterUnpaired
 }
 
 public static class Program
-{   
+{
+    private static ConsoleWriter consoleWriter = new ConsoleWriter();
     public static String[] filterShortMac = {"",""};
     public static int[] lastShotNumber = { -1, -1 };
     public static int[] runningShotNumber = { 0, 0 };
@@ -145,14 +156,13 @@ public static class Program
     public static byte connectAndConfigureByte = 0;
     public static bool scanAll = false;
     public static int recvCount = 0;    
-    public static int players = 0;
-    public static bool metric = false;
+    public static int players = 0;    
     public static String ballTypeArgDesc = "unknown";
 
     static async Task Main(string[] args)
     {      
         String appDataPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        String usage = "Version 1.3\nUsage:   DigiBallScanner.exe x y\nx:       Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nx=all:   Scans all visible devices\nmetric:  Use metric units";
+        String usage = "Version 1.4\nUsage:   DigiBallScanner.exe x y\nx and y: Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nNone:    Scans all visible devices";
         Console.WriteLine("DigiBall Console for Windows - Generates realtime ball graphics for streaming software.\n");
         Console.WriteLine("Output images will be generated in:");
         Console.WriteLine(string.Format("{0}\n", appDataPath));
@@ -206,12 +216,7 @@ public static class Program
                 identifyScan = true;
                 scanAll = true;
                 break;
-            }            
-            else if (arg == "metric")
-            {
-                Console.WriteLine("Metric units used.");
-                metric = true;
-            }
+            }                        
             else if (arg.Length != 6)
             {
                 Console.WriteLine(usage);
@@ -345,17 +350,8 @@ public static class Program
         String stats = "";      
 
         int TipPercentFives = (int)(Math.Round((Convert.ToDouble(tipPercent) / 5)) * 5); //Multiple of 5
-
-        double convFactor = metric ? 1.60934 : 1.0;
-        double speed = Convert.ToDouble(Math.Round(speedMPH * 2 * convFactor)) / 2; //0.5 precision
-        String speedStr = string.Format("{0:F1}", speed);
-        String unit = metric ? "km/h" : "mph";
-        if (speedMPH>7)
-        {
-            speedStr = String.Format("{0}+", speedStr);  
-        }         
-
-        stats = String.Format("Shot {0}\n{1} {2}\n{3} rps\n{4}\n{5} pfc", shotNumber, speedStr, unit, spinRPM/60, clock, TipPercentFives);
+                
+        stats = String.Format("{0}\n{1} pfc\n{2} rps", clock, TipPercentFives, spinRPM / 60);
 
         double ax = Math.Sin(Math.PI / 180 * angle);
         double ay = -Math.Cos(Math.PI / 180 * angle);
@@ -549,27 +545,21 @@ public static class Program
                 {
                     // Only print the first one of the list
                     var manufacturerData = manufacturerSections[0];
-                    var data = new byte[manufacturerData.Data.Length];
-                    using (var reader = DataReader.FromBuffer(manufacturerData.Data))
-                    {
-                        reader.ReadBytes(data);
-                    }
-
-                    String shortMac = BitConverter.ToString(data).Replace("-", string.Empty).Substring(0, 6);
-
-                    String manufacturerConsoleString = string.Format("{0} {1} {2} {3:X} {4}",
-                        timeStamp,
-                        recvCount,
-                        shortMac,
-                        device.BluetoothAddress,
-                        BitConverter.ToString(data));
 
                     if (identifyScan)
                     {
-                        Console.WriteLine(manufacturerConsoleString);
+                        consoleWriter.writeManufDataInfo(manufacturerData);
                     }
                     else
                     {
+                        var data = new byte[manufacturerData.Data.Length];
+                        using (var reader = DataReader.FromBuffer(manufacturerData.Data))
+                        {
+                            reader.ReadBytes(data);
+                        }
+
+                        String shortMac = BitConverter.ToString(data).Replace("-", string.Empty).Substring(0, 6);
+
                         int player = 0;
                         if (filterShortMac[0] == shortMac)
                         {
@@ -641,9 +631,10 @@ public static class Program
                                     double spinMagDPS = Math.Sqrt(Math.Pow(spinHorzDPS, 2) + Math.Pow(spinVertDPS, 2));
                                     double speedMPH = 0.06 * speedFactor;                                    
                                     int spinRPM = (int)Math.Round(60 / 360.0 * spinMagDPS);
+                                    double spinRPS = (double)spinRPM / 60;
                                     
-                                    Console.WriteLine("{0} {1} {2}: ({3}) MAC: {4}, Shot Number: {5}, Seconds: {6}, Angle(deg): {7}, Tip Percent: {8}, Speed(mph): {9:F1}",
-                                        timeStamp, recvCount, ply, ballDescription, shortMac, shotNumber, secondsMotionless, angle, tipPercent, speedMPH);
+                                    Console.WriteLine("{0} {1} {2}: ({3}) MAC: {4}, Shot Number: {5}, Seconds: {6}, Angle(deg): {7}, Tip Percent: {8}, Spin(rps): {9:F1}",
+                                        timeStamp, recvCount, ply, ballDescription, shortMac, shotNumber, secondsMotionless, angle, tipPercent, spinRPS);
 
                                     if (dataReady && lastShotNumber[player - 1] != shotNumber)
                                     {
