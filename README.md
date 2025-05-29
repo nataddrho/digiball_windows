@@ -8,6 +8,7 @@ Windows command-line tool for scanning DigiBall devices with Bluetooth LE, and g
  - Version 1.1 - Changed RPM to RPS for consistency with iOS/Android/DigiCast app
  - Version 1.2 - Ball type and color is read directly from ball. Argument no longer needed.
  - Version 1.3 - Added hidden arguments for changing ball type, factory usage only.
+ - Version 1.4 - Simplified scanner messages.
 
 ### Requirements:
 
