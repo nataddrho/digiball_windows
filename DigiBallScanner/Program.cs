@@ -9,7 +9,251 @@ using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Storage.Streams;
 using DigiBallScanner.Properties;
+using System.Runtime.CompilerServices;
+using Windows.Storage.Pickers;
 
+
+public static class GraphicsExtensions
+{
+    public static void DrawCircle(this Graphics g, Pen pen, float centerX, float centerY, float radius)
+    {
+        g.DrawEllipse(pen, centerX - radius, centerY - radius, radius * 2, radius * 2);
+    }
+
+    public static void FillCircle(this Graphics g, Brush brush, float centerX, float centerY, float radius)
+    {
+        g.FillEllipse(brush, centerX - radius, centerY - radius, radius * 2, radius * 2);
+    }
+}
+
+public class ImageWriter
+{
+    private int player;
+    private bool isYellow;
+    private int angle;
+    private int tipPercent;
+    private int spinRPM;
+    private double tipPercentMultiplier;
+    private Bitmap backgroundImage;
+    private const int ballDiameterPixels = 345; //Size of blank cueball image in pixels, square
+    
+    public ImageWriter(int player)
+    {
+        this.player = player;
+        this.isYellow = player != 0;
+        this.backgroundImage = this.isYellow ? Resources.blank_yellow : Resources.blank;
+    }
+
+    public void update(int angle, int tipPercent, double tipPercentMultiplier, int spinRPM)
+    {
+        this.angle = angle;
+        this.tipPercent = tipPercent;
+        this.tipPercentMultiplier = tipPercentMultiplier;
+        this.spinRPM = spinRPM;
+    }
+
+    private String degrees2clock(int angle)
+    {
+        // Convert degrees into hours and minutes (o'clocks)
+        double a = Convert.ToDouble(angle);
+        if (a < 0) a += 360;
+        int hour = (int)Math.Floor(a * 12 / 360.0);
+        double minute = a * 12 / 360.0 - Convert.ToDouble(hour);
+        if (hour == 0) hour = 12;
+        minute *= 60;
+        String s;
+        if (minute < 10)
+        {
+            s = String.Format("{0}:0{1}", hour, (int)minute);
+        }
+        else
+        {
+            s = String.Format("{0}:{1}", hour, (int)minute);
+        }
+        return s;
+    }
+
+    private void drawImage()
+    {
+        //Update cueball picture
+        
+        int ballRadius = ballDiameterPixels / 2;
+        int tipRadius = (int)(Convert.ToDouble(ballDiameterPixels) * 0.5 * 11.8 / (57.15 * tipPercentMultiplier));
+        String clock = degrees2clock(angle);
+
+        String stats = "";
+        int TipPercentFives = (int)(Math.Round((Convert.ToDouble(tipPercent) / 5)) * 5); //Multiple of 5
+        double spinRPS = (double)spinRPM / 60;
+        stats = String.Format("{0}\n{1} pfc\n{2} rps", clock, TipPercentFives, spinRPS);
+
+        double ax = Math.Sin(Math.PI / 180 * angle);
+        double ay = -Math.Cos(Math.PI / 180 * angle);
+        bool showDeviation = false;
+        double tipEstimationError = showDeviation ? 0.15 : 0;
+        double tipRadiusDime = 0.358;
+        double tipRadiusCurvatureRatio = tipRadiusDime / 1.125;
+        double est1 = tipPercent * (1 - tipEstimationError) / 100;
+        double est2 = tipPercent * (1 + tipEstimationError) / 100;
+        if (est2 > 0.55) est2 = 0.55;
+        double r1 = ballRadius * est1;
+        double r2 = ballRadius * est2;
+        double drawOffset1 = r1 * tipRadiusCurvatureRatio;
+        double drawOffset2 = r2 * tipRadiusCurvatureRatio;
+        double px1 = 0;
+        double px2 = 0;
+
+        double s1 = r1 + drawOffset1;
+        if ((s1 - tipRadius) > r2)
+        {
+            px1 = r1 + tipRadius;
+        }
+        else
+        {
+            px1 = s1;
+        }
+        double s2 = r2 + drawOffset2;
+        if ((s2 - tipRadius) > r2)
+        {
+            px2 = r2 + tipRadius;
+        }
+        else
+        {
+            px2 = s2;
+        }
+
+        //for (int j = 0; j < 2; j++) //j=0 is without grid, j=1 is with grid
+        int j = 1; //Always add grid for consistency
+        {            
+
+            Bitmap cueballImage = new Bitmap(backgroundImage); //Create from resource            
+
+            // Create a graphics object from the image
+            Graphics graphics = Graphics.FromImage(cueballImage);
+
+            //Tip outline
+            Pen pen = new Pen(System.Drawing.Color.Black);
+            Brush brush = new SolidBrush(System.Drawing.Color.Black);
+            pen.Width = 2 * tipRadius;
+            float x0 = (float)(ballRadius + px1 * ax);
+            float y0 = (float)(ballRadius + px1 * ay);
+            float x1 = (float)(ballRadius + px2 * ax);
+            float y1 = (float)(ballRadius + px2 * ay);
+            if (showDeviation)
+            {
+                graphics.DrawLine(pen, x0, y0, x1, y1);
+                graphics.FillCircle(brush, x0, y0, tipRadius);
+                graphics.FillCircle(brush, x1, y1, tipRadius);
+            }
+            else
+            {
+                graphics.FillCircle(brush, x0, y0, tipRadius);
+            }
+
+            // Save the image to a file
+            if (j == 0)
+            {
+                //cueballImage.Save(String.Format("digiball{0}_tipOutline.png", player));
+            }
+
+            //Grid
+            if (j > 0)
+            {
+                pen.Width = 1;
+                for (int i = 0; i < 6; i++)
+                {
+                    graphics.DrawCircle(pen, ballRadius, ballRadius, (float)(ballRadius * 0.1 * (i + 1)));
+                }
+
+                for (int i = 0; i < 6; i++)
+                {
+                    double x = 0.6 * ballRadius * Math.Cos(2 * Math.PI * Convert.ToDouble(i) / 12);
+                    double y = 0.6 * ballRadius * Math.Sin(2 * Math.PI * Convert.ToDouble(i) / 12);
+                    graphics.DrawLine(pen, ballRadius - (int)x, ballRadius - (int)y, ballRadius + (int)x, ballRadius + (int)y);
+                }
+
+                // Save the image to a file       
+                //cueballImage.Save(String.Format("digiball{0}_tipOutlineGrid.png", player));
+            }
+
+            //Tip contact point        
+            pen.Width = 6;
+            pen.Color = System.Drawing.Color.Cyan;
+            brush = new SolidBrush(System.Drawing.Color.Cyan);
+            x0 = (float)(ballRadius + r1 * ax);
+            y0 = (float)(ballRadius + r1 * ay);
+            x1 = (float)(ballRadius + r2 * ax);
+            y1 = (float)(ballRadius + r2 * ay);
+            if (showDeviation)
+            {
+                graphics.DrawLine(pen, x0, y0, x1, y1);
+                graphics.FillCircle(brush, x0, y0, 3);
+                graphics.FillCircle(brush, x1, y1, 3);
+            }
+            else
+            {
+                graphics.FillCircle(brush, x0, y0, 3);
+            }
+
+            // Save the image to a file
+            if (j == 0)
+            {
+                //cueballImage.Save(String.Format("digiball{0}_tipOutlineContact.png", player));                
+            }
+            else
+            {
+                //cueballImage.Save(String.Format("digiball{0}_tipOutlineGridContact.png", player));
+                cueballImage.Save(String.Format("DigiBall{0}.png", player));
+            }
+
+            //Guide
+            pen.Color = System.Drawing.Color.Red;
+            pen.Width = 4;
+            graphics.DrawLine(pen, ballRadius, ballRadius, (float)(ballRadius * (1 + ax)), (float)(ballRadius * (1 + ay)));
+            pen.Width = 6;
+            pen.Color = System.Drawing.Color.Cyan;
+            graphics.DrawLine(pen, x0, y0, x1, y1);
+            graphics.FillCircle(brush, x0, y0, 3);
+            graphics.FillCircle(brush, x1, y1, 3);
+
+            // Save the image to a file
+            if (j == 0)
+            {
+                //cueballImage.Save(String.Format("digiball{0}_tipOutlineContactAngle.png", player));
+            }
+            else
+            {
+                //cueballImage.Save(String.Format("digiball{0}_tipOutlineGridContactAngle.png", player));
+            }
+
+            // Dispose of the graphics object and image
+            graphics.Dispose();
+            cueballImage.Dispose();
+
+            // Generate stats image
+            Bitmap statsImage = new Bitmap(ballDiameterPixels, ballDiameterPixels, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+
+            // Create a graphics object from the image
+            graphics = Graphics.FromImage(statsImage);
+
+            RectangleF rectF1 = new RectangleF(0, 0, statsImage.Width, statsImage.Height);
+            RectangleF rectF2 = new RectangleF(2, 2, statsImage.Width - 2, statsImage.Height - 2);
+
+            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            graphics.DrawString(stats, new Font("Tahoma", 42), Brushes.Black, rectF2);
+            graphics.DrawString(stats, new Font("Tahoma", 42), Brushes.White, rectF1);
+
+            statsImage.Save(String.Format("DigiBall{0}_Stats.png", player));
+
+            // Dispose of the graphics object and image
+            graphics.Dispose();
+            statsImage.Dispose();
+        }
+    }
+
+}
 public class ConsoleWriter
 {
     public void writeManufDataInfo(BluetoothLEManufacturerData manufData)
@@ -158,9 +402,13 @@ public static class Program
     public static int recvCount = 0;    
     public static int players = 0;    
     public static String ballTypeArgDesc = "unknown";
+    public ImageWriter imageWriter1;
+    public ImageWriter imageWriter2;
 
     static async Task Main(string[] args)
-    {      
+    {
+        
+
         String appDataPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
         String usage = "Version 1.4\nUsage:   DigiBallScanner.exe x y\nx and y: Mac Address filter: Least significant 3 bytes (hex) of DigiBall MAC address.\nNone:    Scans all visible devices";
         Console.WriteLine("DigiBall Console for Windows - Generates realtime ball graphics for streaming software.\n");
@@ -301,231 +549,7 @@ public static class Program
                 await Task.Delay(5000);
             }
         }
-    }
-
-    private static void DrawCircle(this Graphics g, Pen pen,
-                                  float centerX, float centerY, float radius)
-    {
-        g.DrawEllipse(pen, centerX - radius, centerY - radius,
-                      radius + radius, radius + radius);
-    }
-
-    private static void FillCircle(this Graphics g, Brush brush,
-                                  float centerX, float centerY, float radius)
-    {
-        g.FillEllipse(brush, centerX - radius, centerY - radius,
-                      radius + radius, radius + radius);
-    }
-
-    private static String degrees2clock(int angle)
-    {
-        // Convert degrees into hours and minutes (o'clocks)
-        double a = Convert.ToDouble(angle);
-        if (a < 0) a += 360;
-        int hour = (int)Math.Floor(a * 12 / 360.0);
-        double minute = a * 12 / 360.0 - Convert.ToDouble(hour);
-        if (hour == 0) hour = 12;
-        minute *= 60;        
-        String s;
-        if (minute < 10)
-        {           
-            s = String.Format("{0}:0{1}", hour, (int)minute);
-        }
-        else
-        {
-            s = String.Format("{0}:{1}", hour, (int)minute);
-        }
-        return s;
-    }
-
-    private static void drawImage(int player, bool yellow, double tipPercentMultiplier, int shotNumber, int spinRPM, int angle, int tipPercent, double speedMPH, bool showDeviation)
-    {
-        //Update cueball picture
-
-        int ballDiameter = 345; //Size of blank cueball image in pixels, square
-        int ballRadius = ballDiameter / 2;
-        int tipRadius = (int)(Convert.ToDouble(ballDiameter)*0.5*11.8/(57.15*tipPercentMultiplier));
-        String clock = degrees2clock(angle);
-
-        String stats = "";      
-
-        int TipPercentFives = (int)(Math.Round((Convert.ToDouble(tipPercent) / 5)) * 5); //Multiple of 5
-                
-        stats = String.Format("{0}\n{1} pfc\n{2} rps", clock, TipPercentFives, spinRPM / 60);
-
-        double ax = Math.Sin(Math.PI / 180 * angle);
-        double ay = -Math.Cos(Math.PI / 180 * angle);
-        double tipEstimationError = showDeviation ? 0.15 : 0;
-        double tipRadiusDime = 0.358;
-        double tipRadiusCurvatureRatio = tipRadiusDime / 1.125;
-        double est1 = tipPercent * (1 - tipEstimationError) / 100;
-        double est2 = tipPercent * (1 + tipEstimationError) / 100;
-        if (est2 > 0.55) est2 = 0.55;
-        double r1 = ballRadius * est1;
-        double r2 = ballRadius * est2;
-        double drawOffset1 = r1 * tipRadiusCurvatureRatio;
-        double drawOffset2 = r2 * tipRadiusCurvatureRatio;              
-        double px1 = 0;
-        double px2 = 0;
-
-        double s1 = r1 + drawOffset1;
-        if ((s1 - tipRadius) > r2)
-        {
-            px1 = r1 + tipRadius;
-        }
-        else
-        {
-            px1 = s1;
-        }
-        double s2 = r2 + drawOffset2;
-        if ((s2 - tipRadius) > r2)
-        {
-            px2 = r2 + tipRadius;
-        }
-        else
-        {
-            px2 = s2;
-        }
-
-        // Get bitmap file location
-        //string dir = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        //string cueball = System.IO.Path.Combine(dir, "blank.png");
-
-        for (int j = 0; j < 2; j++)
-        {
-
-            //Bitmap image = new Bitmap(cueball);
-            Bitmap backgroundImage;
-            if (yellow)
-            {
-                backgroundImage = Resources.blank_yellow;
-            } else
-            {
-                backgroundImage = Resources.blank;
-            }
-
-            Bitmap cueballImage = new Bitmap(backgroundImage); //Create from resource            
-
-            // Create a graphics object from the image
-            Graphics graphics = Graphics.FromImage(cueballImage);
-
-            //Tip outline
-            Pen pen = new Pen(System.Drawing.Color.Black);
-            Brush brush = new SolidBrush(System.Drawing.Color.Black);
-            pen.Width = 2 * tipRadius;
-            float x0 = (float)(ballRadius + px1 * ax);
-            float y0 = (float)(ballRadius + px1 * ay);
-            float x1 = (float)(ballRadius + px2 * ax);
-            float y1 = (float)(ballRadius + px2 * ay);
-            if (showDeviation)
-            {
-                graphics.DrawLine(pen, x0, y0, x1, y1);
-                FillCircle(graphics, brush, x0, y0, tipRadius);
-                FillCircle(graphics, brush, x1, y1, tipRadius);
-            } else
-            {
-                FillCircle(graphics, brush, x0, y0, tipRadius);
-            }
-
-            // Save the image to a file
-            if (j == 0)
-            {
-                cueballImage.Save(String.Format("digiball{0}_tipOutline.png",player));
-            }
-
-            //Grid
-            if (j > 0)
-            {
-                pen.Width = 1;
-                for (int i = 0; i < 6; i++)
-                {
-                    DrawCircle(graphics, pen, ballRadius, ballRadius, (float)(ballRadius * 0.1 * (i + 1)));
-                }
-
-                for (int i = 0; i<6; i++)
-                {
-                    double x = 0.6 * ballRadius * Math.Cos(2 * Math.PI * Convert.ToDouble(i) / 12);
-                    double y = 0.6 * ballRadius * Math.Sin(2 * Math.PI * Convert.ToDouble(i) / 12);
-                    graphics.DrawLine(pen, ballRadius - (int)x, ballRadius - (int)y, ballRadius + (int)x, ballRadius + (int)y);
-                }
-
-                // Save the image to a file       
-                cueballImage.Save(String.Format("digiball{0}_tipOutlineGrid.png",player));
-            }
-
-            //Tip contact point        
-            pen.Width = 6;
-            pen.Color = System.Drawing.Color.Cyan;
-            brush = new SolidBrush(System.Drawing.Color.Cyan);
-            x0 = (float)(ballRadius + r1 * ax);
-            y0 = (float)(ballRadius + r1 * ay);
-            x1 = (float)(ballRadius + r2 * ax);
-            y1 = (float)(ballRadius + r2 * ay);
-            if (showDeviation)
-            {
-                graphics.DrawLine(pen, x0, y0, x1, y1);
-                FillCircle(graphics, brush, x0, y0, 3);
-                FillCircle(graphics, brush, x1, y1, 3);
-            } else
-            {
-                FillCircle(graphics, brush, x0, y0, 3);
-            }
-
-            // Save the image to a file
-            if (j == 0)
-            {
-                cueballImage.Save(String.Format("digiball{0}_tipOutlineContact.png",player));
-            } else
-            {
-                cueballImage.Save(String.Format("digiball{0}_tipOutlineGridContact.png",player));
-            }
-
-            //Guide
-            pen.Color = System.Drawing.Color.Red;
-            pen.Width = 4;
-            graphics.DrawLine(pen, ballRadius, ballRadius, (float)(ballRadius * (1 + ax)), (float)(ballRadius * (1 + ay)));
-            pen.Width = 6;
-            pen.Color = System.Drawing.Color.Cyan;
-            graphics.DrawLine(pen, x0, y0, x1, y1);
-            FillCircle(graphics, brush, x0, y0, 3);
-            FillCircle(graphics, brush, x1, y1, 3);
-
-            // Save the image to a file
-            if (j == 0)
-            {
-                cueballImage.Save(String.Format("digiball{0}_tipOutlineContactAngle.png",player));
-            } else
-            {
-                cueballImage.Save(String.Format("digiball{0}_tipOutlineGridContactAngle.png",player));
-            }
-
-            // Dispose of the graphics object and image
-            graphics.Dispose();
-            cueballImage.Dispose();
-
-            // Generate stats image
-            Bitmap statsImage = new Bitmap(ballDiameter, ballDiameter, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
-
-            // Create a graphics object from the image
-            graphics = Graphics.FromImage(statsImage);
-
-            RectangleF rectF1 = new RectangleF(0, 0, statsImage.Width, statsImage.Height);
-            RectangleF rectF2 = new RectangleF(2, 2, statsImage.Width-2, statsImage.Height-2);
-
-            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-            graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-            graphics.DrawString(stats, new Font("Tahoma", 42), Brushes.Black, rectF2);
-            graphics.DrawString(stats, new Font("Tahoma", 42), Brushes.White, rectF1);
-
-            statsImage.Save(String.Format("digiball{0}_stats.png",player));
-
-            // Dispose of the graphics object and image
-            graphics.Dispose();
-            statsImage.Dispose();
-        }        
-    }
+    }   
 
     private static async void Watcher_Received(
         BluetoothLEAdvertisementWatcher watcher,
@@ -640,7 +664,14 @@ public static class Program
                                     {
                                         lastShotNumber[player - 1] = shotNumber;
                                         runningShotNumber[player - 1]++;
-                                        drawImage(player, ballIsYellow, tipPercentMultiplier, runningShotNumber[player - 1], spinRPM, angle, tipPercent, speedMPH, false);
+                                        if (player==1)
+                                        {
+                                            imageWriter1.
+                                        } else
+                                        {
+
+                                        }
+                                        //drawImage(player, ballIsYellow, tipPercentMultiplier, runningShotNumber[player - 1], spinRPM, angle, tipPercent, speedMPH, false);
                                     }                                                                       
                                 }
                             }
